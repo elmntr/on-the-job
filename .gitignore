@@ -1,0 +1,32 @@
+# Android Studio / Gradle
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# Firebase
+**/google-services.json
+
+# Node / Cloudflare Worker (onthejob-ai-proxy/)
+node_modules/
+.wrangler/
+.dev.vars
+.dev.vars.*
+npm-debug.log*
+dist/
+
+# General
+.env
+.env.local
+*.log
