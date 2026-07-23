@@ -18,6 +18,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.example.onthejob.ui.screens.*
+import com.example.onthejob.ui.newentry.NewEntryScreen
 @Composable
 fun AppNavHost() {
     val backStack = rememberNavBackStack(Route.LogFeed)

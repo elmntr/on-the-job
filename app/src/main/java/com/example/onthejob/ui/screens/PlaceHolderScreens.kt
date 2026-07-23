@@ -43,12 +43,6 @@ fun TimeTrackingScreen() {
     PlaceholderScreen("Time Tracking")
 }
 
-@Composable
-fun NewEntryScreen(onBack: () -> Unit) {
-    PlaceholderScreen("New Entry") {
-        Button(onClick = onBack) { Text("Save & back") }
-    }
-}
 
 @Composable
 fun EntryDetailScreen(entryId: String, onBack: () -> Unit) {

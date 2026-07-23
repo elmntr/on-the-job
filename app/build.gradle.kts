@@ -1,3 +1,12 @@
+configurations.all {
+    resolutionStrategy {
+        force("org.jetbrains.kotlin:kotlin-stdlib:2.2.10")
+        force("org.jetbrains.kotlin:kotlin-stdlib-common:2.2.10")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.2.10")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.2.10")
+    }
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
@@ -66,4 +75,8 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.kotlinx.serialization.core)
+
+    implementation(libs.okhttp)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 }
