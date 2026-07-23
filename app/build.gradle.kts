@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.google.services)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -65,4 +66,11 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation("androidx.compose.material:material-icons-extended")
+
+    // Navigation 3
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+    implementation(libs.kotlinx.serialization.core)
 }

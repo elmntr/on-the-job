@@ -13,6 +13,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import com.example.onthejob.navigation.AppNavHost
 import com.example.onthejob.ui.auth.AuthViewModel
 import com.example.onthejob.ui.auth.SignInScreen
 import com.example.onthejob.ui.auth.SignInUiState
@@ -31,7 +32,7 @@ class MainActivity : ComponentActivity() {
 
                     when (uiState) {
                         is SignInUiState.SignedIn -> {
-                            // TODO: replace with real nav shell — home/log feed screen
+                            AppNavHost()
                         }
                         else -> {
                             SignInScreen(
