@@ -1,5 +1,4 @@
 package com.example.onthejob
-
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,10 +16,8 @@ import com.example.onthejob.navigation.AppNavHost
 import com.example.onthejob.ui.auth.AuthViewModel
 import com.example.onthejob.ui.auth.SignInScreen
 import com.example.onthejob.ui.auth.SignInUiState
-
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -29,7 +26,6 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.safeDrawingPadding()) {
                     val uiState by authViewModel.uiState.collectAsState()
                     val webClientId = stringResource(R.string.default_web_client_id)
-
                     when (uiState) {
                         is SignInUiState.SignedIn -> {
                             AppNavHost()
