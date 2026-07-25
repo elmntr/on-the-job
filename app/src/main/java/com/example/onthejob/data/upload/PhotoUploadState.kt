@@ -1,6 +1,7 @@
 package com.example.onthejob.data.upload
 
 import android.net.Uri
+import java.io.File
 
 sealed class PhotoUploadState {
     data object Pending : PhotoUploadState()
@@ -11,5 +12,6 @@ sealed class PhotoUploadState {
 
 data class PickedPhoto(
     val uri: Uri,
+    val localFile: File,
     val state: PhotoUploadState = PhotoUploadState.Pending,
 )

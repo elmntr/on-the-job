@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,7 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.example.onthejob.data.upload.PhotoUploadState
@@ -29,10 +30,20 @@ import com.example.onthejob.ui.theme.Paper
 @Composable
 fun NewEntryScreen(onBack: () -> Unit, viewModel: NewEntryViewModel = viewModel()) {
     val photos by viewModel.photos.collectAsState()
+    val description by viewModel.description.collectAsState()
+    val hours by viewModel.hours.collectAsState()
+    val saveState by viewModel.saveState.collectAsState()
 
     val pickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 15),
     ) { uris -> if (uris.isNotEmpty()) viewModel.onPhotosPicked(uris) }
+
+    // Navigate back once the entry is actually saved — not just on tap.
+    LaunchedEffect(saveState) {
+        if (saveState is SaveState.Saved) {
+            onBack()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -66,7 +77,60 @@ fun NewEntryScreen(onBack: () -> Unit, viewModel: NewEntryViewModel = viewModel(
         }
 
         Spacer(Modifier.height(16.dp))
-        Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Save & back") }
+        Text("Description", style = MaterialTheme.typography.labelMedium)
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = description,
+            onValueChange = viewModel::onDescriptionChanged,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("What did you do today?") },
+            minLines = 3,
+            maxLines = 6,
+        )
+
+        Spacer(Modifier.height(12.dp))
+        Text("Hours today", style = MaterialTheme.typography.labelMedium)
+        Spacer(Modifier.height(6.dp))
+        OutlinedTextField(
+            value = if (hours == hours.toLong().toDouble()) hours.toLong().toString() else hours.toString(),
+            onValueChange = { input ->
+                val parsed = input.toDoubleOrNull()
+                if (input.isEmpty()) {
+                    viewModel.onHoursChanged(0.0)
+                } else if (parsed != null) {
+                    viewModel.onHoursChanged(parsed)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            singleLine = true,
+        )
+
+        if (saveState is SaveState.Error) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = (saveState as SaveState.Error).message,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = { viewModel.saveEntry() },
+            enabled = saveState !is SaveState.Saving,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (saveState is SaveState.Saving) {
+                CircularProgressIndicator(
+                    modifier = Modifier.height(18.dp),
+                    strokeWidth = 2.dp,
+                    color = Color.White,
+                )
+            } else {
+                Text("Save entry")
+            }
+        }
     }
 }
 
