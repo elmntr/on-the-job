@@ -17,13 +17,14 @@ import com.example.onthejob.navigation.AppNavHost
 import com.example.onthejob.ui.auth.AuthViewModel
 import com.example.onthejob.ui.auth.SignInScreen
 import com.example.onthejob.ui.auth.SignInUiState
+import com.example.onthejob.ui.theme.OnTheJobTheme
 class MainActivity : ComponentActivity() {
     private val authViewModel: AuthViewModel by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MaterialTheme {
+            OnTheJobTheme {
                 Surface(modifier = Modifier.safeDrawingPadding()) {
                     val uiState by authViewModel.uiState.collectAsState()
                     val webClientId = stringResource(R.string.default_web_client_id)
