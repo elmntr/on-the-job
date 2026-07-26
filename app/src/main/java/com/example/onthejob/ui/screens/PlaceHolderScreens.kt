@@ -26,14 +26,6 @@ private fun PlaceholderScreen(title: String, content: @Composable ColumnScope.()
 }
 
 @Composable
-fun LogFeedScreen(onNewEntry: () -> Unit, onOpenEntry: (String) -> Unit) {
-    PlaceholderScreen("Log Feed") {
-        Button(onClick = onNewEntry) { Text("New entry") }
-        Button(onClick = { onOpenEntry("sample-id") }) { Text("Open sample entry") }
-    }
-}
-
-@Composable
 fun CalendarScreen() {
     PlaceholderScreen("Calendar")
 }

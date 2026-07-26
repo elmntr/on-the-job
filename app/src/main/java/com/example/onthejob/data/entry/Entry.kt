@@ -1,6 +1,6 @@
 package com.example.onthejob.data.entry
 
-import com.google.firebase.firestore.Exclude
+import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.ServerTimestamp
 import java.util.Date
 
@@ -19,7 +19,7 @@ import java.util.Date
  *                    description as a fallback
  */
 data class Entry(
-    @get:Exclude @set:Exclude var id: String = "",
+    @DocumentId var id: String = "",
     val userId: String = "",
     val rawText: String = "",
     val text: String = "",

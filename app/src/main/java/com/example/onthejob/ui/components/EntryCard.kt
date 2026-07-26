@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.onthejob.ui.theme.*
+import androidx.compose.foundation.clickable
 
 @Composable
 fun EntryCard(
@@ -35,9 +36,10 @@ fun EntryCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .let { if (onClick != null) it.clickable(onClick = onClick) else it }
                 .background(CardSurface, RoundedCornerShape(14.dp))
                 .border(BorderStroke(0.5.dp, Line), RoundedCornerShape(14.dp))
-                .padding(start = 48.dp, top = 13.dp, end = 13.dp, bottom = 11.dp),
+                .padding(start = 56.dp, top = 13.dp, end = 13.dp, bottom = 11.dp),
         ) {
             Text(
                 text = description,
