@@ -28,6 +28,7 @@ import com.example.onthejob.ui.theme.CondFontFamily
 import com.example.onthejob.ui.theme.Ink
 import com.example.onthejob.ui.theme.Ink2
 import com.example.onthejob.ui.theme.Paper
+import com.example.onthejob.ui.calendar.CalendarScreen
 
 @Composable
 fun AppNavHost() {
@@ -102,7 +103,9 @@ fun AppNavHost() {
                         onOpenEntry = { id -> backStack.add(Route.EntryDetail(id)) },
                     )
                 }
-                entry<Route.Calendar> { CalendarScreen() }
+                entry<Route.Calendar> {
+                    CalendarScreen(onOpenEntry = { id -> backStack.add(Route.EntryDetail(id)) })
+                }
                 entry<Route.TimeTracking> { TimeTrackingScreen() }
                 entry<Route.NewEntry> { NewEntryScreen(onBack = { backStack.removeLastOrNull() }) }
                 entry<Route.EntryDetail> { key ->

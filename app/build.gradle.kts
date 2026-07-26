@@ -37,6 +37,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true   // add this line
     }
     buildFeatures {
         compose = true
@@ -82,4 +83,6 @@ dependencies {
     implementation(libs.coil.network.okhttp)
 
     implementation("androidx.work:work-runtime-ktx:2.11.2")
+
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")   // add this line
 }
