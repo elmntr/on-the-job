@@ -25,13 +25,6 @@ private fun PlaceholderScreen(title: String, content: @Composable ColumnScope.()
     }
 }
 
-
-@Composable
-fun TimeTrackingScreen() {
-    PlaceholderScreen("Time Tracking")
-}
-
-
 @Composable
 fun EntryDetailScreen(entryId: String, onBack: () -> Unit) {
     PlaceholderScreen("Entry: $entryId") {

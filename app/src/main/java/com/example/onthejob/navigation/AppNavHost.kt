@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -23,12 +22,12 @@ import androidx.navigation3.ui.NavDisplay
 import com.example.onthejob.ui.screens.*
 import com.example.onthejob.ui.newentry.NewEntryScreen
 import com.example.onthejob.ui.logfeed.LogFeedScreen
+import com.example.onthejob.ui.calendar.CalendarScreen
 import com.example.onthejob.ui.theme.Amber
 import com.example.onthejob.ui.theme.CondFontFamily
 import com.example.onthejob.ui.theme.Ink
 import com.example.onthejob.ui.theme.Ink2
 import com.example.onthejob.ui.theme.Paper
-import com.example.onthejob.ui.calendar.CalendarScreen
 
 @Composable
 fun AppNavHost() {
@@ -77,13 +76,6 @@ fun AppNavHost() {
                         label = { NavLabel("Calendar") },
                         colors = navItemColors,
                     )
-                    NavigationBarItem(
-                        selected = current == Route.TimeTracking,
-                        onClick = { if (current != Route.TimeTracking) { backStack.clear(); backStack.add(Route.TimeTracking) } },
-                        icon = { Icon(Icons.Filled.Schedule, contentDescription = "Time tracking") },
-                        label = { NavLabel("Time") },
-                        colors = navItemColors,
-                    )
                 }
             }
         }
@@ -106,7 +98,6 @@ fun AppNavHost() {
                 entry<Route.Calendar> {
                     CalendarScreen(onOpenEntry = { id -> backStack.add(Route.EntryDetail(id)) })
                 }
-                entry<Route.TimeTracking> { TimeTrackingScreen() }
                 entry<Route.NewEntry> { NewEntryScreen(onBack = { backStack.removeLastOrNull() }) }
                 entry<Route.EntryDetail> { key ->
                     EntryDetailScreen(entryId = key.entryId, onBack = { backStack.removeLastOrNull() })
