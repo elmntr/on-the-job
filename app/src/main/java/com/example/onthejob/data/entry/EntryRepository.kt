@@ -6,6 +6,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import com.google.firebase.firestore.Query
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 class EntryRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
@@ -67,4 +71,35 @@ class EntryRepository(
                 Result.failure(e)
             }
         }
+
+    /**
+     * Live stream of a user's entries, newest first. Uses a snapshot listener
+     * (not a one-shot get()) so the feed reflects async formattingStatus
+     * changes automatically — e.g. AI formatting finishing after the entry
+     * was already saved, or the future Cloudflare Cron retry flipping a
+     * failed_quota entry to done once quota resets. Both can happen while
+     * this screen is already open.
+     *
+     * Firestore's offline cache means this also emits immediately from local
+     * data when offline, then again when the server confirms/reconciles —
+     * consistent with the offline-first behavior elsewhere in the app.
+     */
+    fun getEntries(userId: String): Flow<List<Entry>> = callbackFlow {
+        val registration = firestore.collection("users")
+            .document(userId)
+            .collection("entries")
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val entries = snapshot?.documents?.mapNotNull {
+                    it.toObject(Entry::class.java, com.google.firebase.firestore.DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                }
+                    ?: emptyList()
+                trySend(entries)
+            }
+        awaitClose { registration.remove() }
+    }
 }

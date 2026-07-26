@@ -1,0 +1,136 @@
+package com.example.onthejob.ui.logfeed
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.onthejob.data.entry.Entry
+import com.example.onthejob.ui.components.EntryCard
+import com.example.onthejob.ui.components.HoursCard
+import com.example.onthejob.ui.theme.*
+import java.text.SimpleDateFormat
+import java.util.Locale
+
+private val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
+private val dayFormat = SimpleDateFormat("d", Locale.getDefault())
+
+private fun stampParts(entry: Entry): Pair<String, String> {
+    val date = entry.createdAt ?: return "—" to "-"
+    return monthFormat.format(date).uppercase() to dayFormat.format(date)
+}
+
+@Composable
+fun LogFeedScreen(
+    onNewEntry: () -> Unit,
+    onOpenEntry: (String) -> Unit,
+    viewModel: LogFeedViewModel = viewModel(),
+) {
+    val entries by viewModel.entries.collectAsState()
+    val hoursRendered by viewModel.hoursRendered.collectAsState()
+
+    Box(modifier = Modifier.fillMaxSize().background(Paper)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 10.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "ON THE JOB",
+                    fontFamily = DisplayFontFamily,
+                    fontSize = 15.sp,
+                    color = Ink,
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 16.dp)) {
+                HoursCard(hoursRendered = hoursRendered, hoursRequired = viewModel.hoursRequired)
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        "LOG",
+                        fontFamily = CondFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.6.sp,
+                        color = Muted,
+                    )
+                    Text(
+                        "${entries.size} entries",
+                        fontFamily = CondFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.6.sp,
+                        color = Muted,
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+
+                if (entries.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            "No entries yet — tap + to log your first day.",
+                            fontFamily = BodyFontFamily,
+                            fontSize = 12.sp,
+                            color = Muted,
+                        )
+                    }
+                } else {
+                    LazyColumn(modifier = Modifier.weight(1f)) {
+                        items(entries, key = { it.id }) { entry ->
+                            val (month, day) = stampParts(entry)
+                            EntryCard(
+                                month = month,
+                                day = day,
+                                description = entry.text,
+                                hours = entry.hours,
+                                formattingStatus = entry.formattingStatus,
+                                thumbnailCount = entry.imageUrls.size,
+                                onClick = { onOpenEntry(entry.id) },
+                                modifier = Modifier.padding(bottom = 2.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(Amber)
+                .clickable(onClick = onNewEntry),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = "New entry", tint = Ink)
+        }
+    }
+}
