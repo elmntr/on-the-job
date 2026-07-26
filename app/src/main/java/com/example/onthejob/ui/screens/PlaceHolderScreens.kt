@@ -25,10 +25,6 @@ private fun PlaceholderScreen(title: String, content: @Composable ColumnScope.()
     }
 }
 
-@Composable
-fun CalendarScreen() {
-    PlaceholderScreen("Calendar")
-}
 
 @Composable
 fun TimeTrackingScreen() {
