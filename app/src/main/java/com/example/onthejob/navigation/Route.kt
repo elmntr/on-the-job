@@ -9,6 +9,7 @@ sealed interface Route : NavKey {
     @Serializable data object Calendar : Route
     @Serializable data object NewEntry : Route
     @Serializable data class EntryDetail(val entryId: String) : Route
+    @Serializable data class PhotoViewer(val imageUrls: List<String>, val startIndex: Int) : Route
     @Serializable data object PdfExport : Route
 
     companion object {

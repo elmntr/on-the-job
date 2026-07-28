@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -45,7 +46,11 @@ import java.util.Locale
 private val headerDateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
 
 @Composable
-fun EntryDetailScreen(entryId: String, onBack: () -> Unit) {
+fun EntryDetailScreen(
+    entryId: String,
+    onBack: () -> Unit,
+    onOpenPhotoViewer: (imageUrls: List<String>, startIndex: Int) -> Unit,
+) {
     val context = LocalContext.current
     val viewModel: EntryDetailViewModel = viewModel(
         factory = viewModelFactory {
@@ -131,8 +136,12 @@ fun EntryDetailScreen(entryId: String, onBack: () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         userScrollEnabled = false,
                     ) {
-                        items(current.imageUrls, key = { it }) { url ->
-                            RemotePhotoTile(url = url, onRemove = null)
+                        itemsIndexed(current.imageUrls, key = { _, url -> url }) { index, url ->
+                            RemotePhotoTile(
+                                url = url,
+                                onRemove = null,
+                                onClick = { onOpenPhotoViewer(current.imageUrls, index) },
+                            )
                         }
                     }
                     Spacer(Modifier.height(13.dp))
@@ -321,8 +330,13 @@ private fun AddTile(onClick: () -> Unit) {
 
 /** Already-uploaded photo, referenced by URL. onRemove null = view-mode, no remove control. */
 @Composable
-private fun RemotePhotoTile(url: String, onRemove: (() -> Unit)?) {
-    Box(modifier = Modifier.aspectRatio(1f).clip(RoundedCornerShape(8.dp))) {
+private fun RemotePhotoTile(url: String, onRemove: (() -> Unit)?, onClick: (() -> Unit)? = null) {
+    Box(
+        modifier = Modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(8.dp))
+            .let { if (onClick != null) it.clickable(onClick = onClick) else it },
+    ) {
         AsyncImage(model = url, contentDescription = null, modifier = Modifier.fillMaxSize())
         if (onRemove != null) {
             Box(
