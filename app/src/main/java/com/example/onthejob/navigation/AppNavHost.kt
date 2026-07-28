@@ -23,6 +23,7 @@ import com.example.onthejob.ui.screens.*
 import com.example.onthejob.ui.newentry.NewEntryScreen
 import com.example.onthejob.ui.logfeed.LogFeedScreen
 import com.example.onthejob.ui.calendar.CalendarScreen
+import com.example.onthejob.ui.entrydetail.EntryDetailScreen
 import com.example.onthejob.ui.theme.Amber
 import com.example.onthejob.ui.theme.CondFontFamily
 import com.example.onthejob.ui.theme.Ink

@@ -26,13 +26,6 @@ private fun PlaceholderScreen(title: String, content: @Composable ColumnScope.()
 }
 
 @Composable
-fun EntryDetailScreen(entryId: String, onBack: () -> Unit) {
-    PlaceholderScreen("Entry: $entryId") {
-        Button(onClick = onBack) { Text("Back") }
-    }
-}
-
-@Composable
 fun PdfExportScreen(onBack: () -> Unit) {
     PlaceholderScreen("PDF Export") {
         Button(onClick = onBack) { Text("Back") }

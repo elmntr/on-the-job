@@ -134,12 +134,18 @@ fun NewEntryScreen(onBack: () -> Unit, viewModel: NewEntryViewModel = viewModel(
                 ),
             )
 
+            var hoursText by remember { mutableStateOf("") }
+            LaunchedEffect(Unit) {
+                hoursText = if (hours == hours.toLong().toDouble()) hours.toLong().toString() else hours.toString()
+            }
+
             Spacer(Modifier.height(12.dp))
             FieldLabel("Hours today")
             Spacer(Modifier.height(7.dp))
             OutlinedTextField(
-                value = if (hours == hours.toLong().toDouble()) hours.toLong().toString() else hours.toString(),
+                value = hoursText,
                 onValueChange = { input ->
+                    hoursText = input
                     val parsed = input.toDoubleOrNull()
                     if (input.isEmpty()) {
                         viewModel.onHoursChanged(0.0)
@@ -234,9 +240,6 @@ private fun PhotoTile(photo: PickedPhoto, onRetry: () -> Unit, onRemove: () -> U
                 )
             }
             is PhotoUploadState.Failed -> {
-                // Plain sized clickable Boxes, not IconButton — IconButton's forced
-                // 48dp hitbox is what caused Retry/Remove to overlap and misfire
-                // on this small 4-column grid (see PROGRESS.md 2026-07-25).
                 Box(
                     modifier = Modifier
                         .align(Alignment.Center)
