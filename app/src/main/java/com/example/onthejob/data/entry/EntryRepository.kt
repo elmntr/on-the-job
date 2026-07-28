@@ -1,6 +1,7 @@
 package com.example.onthejob.data.entry
 
 import com.example.onthejob.util.awaitTask
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
@@ -48,9 +49,10 @@ class EntryRepository(
     /**
      * Appends a single photo URL to an already-saved entry's imageUrls array.
      * Used by PhotoUploadWorker once a queued offline photo finishes
-     * uploading later. Uses FieldValue.arrayUnion so multiple photos
-     * finishing independently (possibly from separate WorkManager runs)
-     * can't overwrite each other.
+     * uploading later — both from New Entry's initial save AND from Entry
+     * Detail's "add photo" edit flow, since both hand off pending uploads to
+     * the same WorkManager job keyed by entryId. Uses FieldValue.arrayUnion
+     * so multiple photos finishing independently can't overwrite each other.
      *
      * Deliberately does NOT apply the save-time timeout trick — if this call
      * fails (still offline, etc.), we let it throw so the caller (the Worker)
@@ -95,11 +97,70 @@ class EntryRepository(
                     return@addSnapshotListener
                 }
                 val entries = snapshot?.documents?.mapNotNull {
-                    it.toObject(Entry::class.java, com.google.firebase.firestore.DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                    it.toObject(Entry::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
                 }
                     ?: emptyList()
                 trySend(entries)
             }
         awaitClose { registration.remove() }
+    }
+
+    /**
+     * Live stream of a single entry, for Entry Detail. A listener (not a
+     * one-shot get()) for the same reason as getEntries — formattingStatus
+     * can flip while the screen is open (e.g. this screen's own Regenerate
+     * action, or a future Cron retry). Emits null if the document doesn't
+     * exist (e.g. deleted elsewhere) rather than throwing, so the screen can
+     * show a clean "not found" state instead of crashing.
+     */
+    fun getEntry(userId: String, entryId: String): Flow<Entry?> = callbackFlow {
+        val registration = firestore.collection("users")
+            .document(userId)
+            .collection("entries")
+            .document(entryId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.toObject(Entry::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE))
+            }
+        awaitClose { registration.remove() }
+    }
+
+    /**
+     * Persists edits from Entry Detail: polished text, hours, the final
+     * photo URL list (after any removals + newly-uploaded additions), and
+     * formattingStatus (e.g. flips to "done" if Regenerate succeeded before
+     * Save was tapped). Uses the same bounded-timeout-as-success pattern as
+     * saveEntry, since this is just as valid to happen offline — the local
+     * write is durable immediately, only the server ack is what's timed out.
+     */
+    suspend fun updateEntry(
+        userId: String,
+        entryId: String,
+        text: String,
+        hours: Double,
+        imageUrls: List<String>,
+        formattingStatus: String,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val task = firestore.collection("users")
+                .document(userId)
+                .collection("entries")
+                .document(entryId)
+                .update(
+                    mapOf(
+                        "text" to text,
+                        "hours" to hours,
+                        "imageUrls" to imageUrls,
+                        "formattingStatus" to formattingStatus,
+                    ),
+                )
+            withTimeoutOrNull(5_000L) { task.awaitTask() }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }
