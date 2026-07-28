@@ -9,9 +9,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.example.onthejob.ui.theme.*
 import androidx.compose.foundation.clickable
 
@@ -22,11 +25,12 @@ fun EntryCard(
     description: String,
     hours: Double,
     formattingStatus: String,
-    thumbnailCount: Int,
+    imageUrls: List<String>,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
 ) {
     val hoursText = if (hours == hours.toLong().toDouble()) "${hours.toLong()}.0" else hours.toString()
+    val thumbnailCount = imageUrls.size
 
     Box(
         modifier = modifier
@@ -51,7 +55,22 @@ fun EntryCard(
             Spacer(Modifier.height(7.dp))
             if (thumbnailCount > 0) {
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    repeat(minOf(thumbnailCount, 2)) {
+                    // First tile: the entry's actual first photo, if we have one.
+                    if (imageUrls.isNotEmpty()) {
+                        AsyncImage(
+                            model = imageUrls[0],
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Amber.copy(alpha = 0.5f), RoundedCornerShape(6.dp)),
+                        )
+                    }
+                    // Second tile: still a placeholder block (not wired to imageUrls[1] yet).
+                    // Only rendered when there are >= 2 photos, matching the original
+                    // "show up to 2 tiles, then +N overflow" layout.
+                    repeat(minOf(thumbnailCount, 2) - 1) {
                         Box(
                             Modifier
                                 .size(34.dp)
