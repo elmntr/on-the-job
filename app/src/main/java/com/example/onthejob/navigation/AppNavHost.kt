@@ -24,6 +24,7 @@ import com.example.onthejob.ui.newentry.NewEntryScreen
 import com.example.onthejob.ui.logfeed.LogFeedScreen
 import com.example.onthejob.ui.calendar.CalendarScreen
 import com.example.onthejob.ui.entrydetail.EntryDetailScreen
+import com.example.onthejob.ui.photoviewer.PhotoViewerScreen
 import com.example.onthejob.ui.theme.Amber
 import com.example.onthejob.ui.theme.CondFontFamily
 import com.example.onthejob.ui.theme.Ink
@@ -101,7 +102,18 @@ fun AppNavHost() {
                 }
                 entry<Route.NewEntry> { NewEntryScreen(onBack = { backStack.removeLastOrNull() }) }
                 entry<Route.EntryDetail> { key ->
-                    EntryDetailScreen(entryId = key.entryId, onBack = { backStack.removeLastOrNull() })
+                    EntryDetailScreen(
+                        entryId = key.entryId,
+                        onBack = { backStack.removeLastOrNull() },
+                        onOpenPhotoViewer = { urls, index -> backStack.add(Route.PhotoViewer(urls, index)) },
+                    )
+                }
+                entry<Route.PhotoViewer> { key ->
+                    PhotoViewerScreen(
+                        imageUrls = key.imageUrls,
+                        startIndex = key.startIndex,
+                        onBack = { backStack.removeLastOrNull() },
+                    )
                 }
                 entry<Route.PdfExport> { PdfExportScreen(onBack = { backStack.removeLastOrNull() }) }
             },
