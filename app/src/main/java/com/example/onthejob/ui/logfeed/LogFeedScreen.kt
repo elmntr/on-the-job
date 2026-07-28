@@ -110,7 +110,7 @@ fun LogFeedScreen(
                                 description = entry.text,
                                 hours = entry.hours,
                                 formattingStatus = entry.formattingStatus,
-                                thumbnailCount = entry.imageUrls.size,
+                                imageUrls = entry.imageUrls,
                                 onClick = { onOpenEntry(entry.id) },
                                 modifier = Modifier.padding(bottom = 2.dp),
                             )
