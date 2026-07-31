@@ -12,6 +12,9 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
+import java.time.LocalDate
+import com.example.onthejob.data.entry.effectiveLocalDate
+
 class EntryRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
 ) {
@@ -90,7 +93,9 @@ class EntryRepository(
         val registration = firestore.collection("users")
             .document(userId)
             .collection("entries")
-            .orderBy("createdAt", Query.Direction.DESCENDING)
+            // No orderBy here anymore — entryDate is missing on pre-migration
+            // entries, and Firestore orderBy silently drops docs missing the
+            // ordered field. Sorting client-side avoids that entirely.
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -98,9 +103,13 @@ class EntryRepository(
                 }
                 val entries = snapshot?.documents?.mapNotNull {
                     it.toObject(Entry::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
-                }
-                    ?: emptyList()
-                trySend(entries)
+                } ?: emptyList()
+
+                val sorted = entries.sortedWith(
+                    compareByDescending<Entry> { it.effectiveLocalDate ?: LocalDate.MIN }
+                        .thenByDescending { it.createdAt?.time ?: 0L } // tiebreak same-day entries by creation order
+                )
+                trySend(sorted)
             }
         awaitClose { registration.remove() }
     }

@@ -26,13 +26,19 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.rememberDatePickerState
 import com.example.onthejob.data.upload.PhotoUploadState
 import com.example.onthejob.data.upload.PickedPhoto
 import com.example.onthejob.ui.components.PrimaryButton
 import com.example.onthejob.ui.components.dashedBorder
 import com.example.onthejob.ui.theme.*
-import java.text.SimpleDateFormat
-import java.util.Calendar
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
@@ -52,9 +58,9 @@ fun NewEntryScreen(onBack: () -> Unit, viewModel: NewEntryViewModel = viewModel(
         }
     }
 
-    val dateLabel = remember {
-        SimpleDateFormat("MMM d", Locale.getDefault()).format(Calendar.getInstance().time).uppercase()
-    }
+    val entryDate by viewModel.entryDate.collectAsState()
+    var showDatePicker by remember { mutableStateOf(false) }
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()) }
 
     Column(
         modifier = Modifier
@@ -80,11 +86,20 @@ fun NewEntryScreen(onBack: () -> Unit, viewModel: NewEntryViewModel = viewModel(
             )
             Spacer(Modifier.weight(1f))
             Text(
-                dateLabel,
+                entryDate.format(dateFormatter).uppercase(),
                 fontFamily = MonoFontFamily,
                 fontSize = 10.sp,
                 color = Muted,
+                modifier = Modifier.clickable { showDatePicker = true },
             )
+
+            if (showDatePicker) {
+                EntryDatePickerDialog(
+                    initialDate = entryDate,
+                    onDismiss = { showDatePicker = false },
+                    onConfirm = { viewModel.onEntryDateChanged(it) },
+                )
+            }
         }
 
         Column(modifier = Modifier.weight(1f).padding(horizontal = 16.dp)) {
@@ -264,5 +279,38 @@ private fun PhotoTile(photo: PickedPhoto, onRetry: () -> Unit, onRemove: () -> U
         ) {
             Text("×", color = Color.White, fontSize = 12.sp)
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EntryDatePickerDialog(
+    initialDate: LocalDate,
+    onDismiss: () -> Unit,
+    onConfirm: (LocalDate) -> Unit,
+) {
+    val initialMillis = initialDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+    val todayMillis = LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+
+    val state = rememberDatePickerState(
+        initialSelectedDateMillis = initialMillis,
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis <= todayMillis
+        },
+    )
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = {
+                state.selectedDateMillis?.let { millis ->
+                    onConfirm(Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate())
+                }
+                onDismiss()
+            }) { Text("OK") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    ) {
+        DatePicker(state = state)
     }
 }

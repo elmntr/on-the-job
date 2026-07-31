@@ -35,15 +35,16 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import coil3.compose.AsyncImage
 import com.example.onthejob.data.upload.PhotoUploadState
 import com.example.onthejob.data.upload.PickedPhoto
+import com.example.onthejob.data.entry.effectiveLocalDate
 import com.example.onthejob.ui.components.GhostButton
 import com.example.onthejob.ui.components.PrimaryButton
 import com.example.onthejob.ui.components.StatusChip
 import com.example.onthejob.ui.components.dashedBorder
 import com.example.onthejob.ui.theme.*
-import java.text.SimpleDateFormat
+import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val headerDateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
+private val headerDateFormat = DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
 
 @Composable
 fun EntryDetailScreen(
@@ -98,7 +99,7 @@ fun EntryDetailScreen(
             }
             Text(
                 text = if (isEditing) "Edit entry" else current?.let {
-                    "${headerDateFormat.format(it.createdAt ?: java.util.Date())} entry"
+                    it.effectiveLocalDate?.let { date -> "${date.format(headerDateFormat)} entry" } ?: "Entry"
                 } ?: "Entry",
                 fontFamily = CondFontFamily,
                 fontWeight = FontWeight.Bold,

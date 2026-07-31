@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.onthejob.data.entry.Entry
 import com.example.onthejob.data.entry.EntryRepository
-import com.example.onthejob.data.entry.localDate
+import com.example.onthejob.data.entry.effectiveLocalDate
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,7 +37,7 @@ class CalendarViewModel(
     val selectedDate: StateFlow<LocalDate> = _selectedDate
 
     val entriesByDate: StateFlow<Map<LocalDate, List<Entry>>> =
-        entries.map { list -> list.filter { it.localDate != null }.groupBy { it.localDate!! } }
+        entries.map { list -> list.filter { it.effectiveLocalDate != null }.groupBy { it.effectiveLocalDate!! } }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val monthGrid: StateFlow<List<LocalDate?>> =
