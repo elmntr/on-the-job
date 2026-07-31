@@ -22,6 +22,7 @@ import com.example.onthejob.data.upload.PickedPhoto
 import com.example.onthejob.util.NetworkStatus
 import com.example.onthejob.util.awaitTask
 import com.google.firebase.auth.FirebaseAuth
+import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,8 +56,18 @@ class NewEntryViewModel(application: Application) : AndroidViewModel(application
     private val _hours = MutableStateFlow(8.0)
     val hours: StateFlow<Double> = _hours.asStateFlow()
 
+    private val _entryDate = MutableStateFlow(LocalDate.now())
+    val entryDate: StateFlow<LocalDate> = _entryDate.asStateFlow()
+
     private val _saveState = MutableStateFlow<SaveState>(SaveState.Idle)
     val saveState: StateFlow<SaveState> = _saveState.asStateFlow()
+
+    /** Clamped defensively even though the date picker's SelectableDates already
+     *  restricts to today-or-earlier — belt and suspenders against any future
+     *  caller that sets this some other way. */
+    fun onEntryDateChanged(date: LocalDate) {
+        _entryDate.value = if (date.isAfter(LocalDate.now())) LocalDate.now() else date
+    }
 
     fun onDescriptionChanged(text: String) {
         _description.value = text
@@ -191,6 +202,7 @@ class NewEntryViewModel(application: Application) : AndroidViewModel(application
                 imageUrls = imageUrls,
                 hours = _hours.value,
                 formattingStatus = formattingStatus,
+                entryDate = _entryDate.value.toString(), // LocalDate.toString() is already ISO "yyyy-MM-dd"
             )
 
             entryRepository.saveEntry(entry).fold(

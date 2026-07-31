@@ -26,5 +26,6 @@ data class Entry(
     val imageUrls: List<String> = emptyList(),
     val hours: Double = 0.0,
     val formattingStatus: String = "failed_other",
+    val entryDate: String = "",
     @ServerTimestamp val createdAt: Date? = null,
 )

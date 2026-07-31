@@ -24,15 +24,13 @@ import com.example.onthejob.data.entry.Entry
 import com.example.onthejob.ui.components.EntryCard
 import com.example.onthejob.ui.components.HoursCard
 import com.example.onthejob.ui.theme.*
-import java.text.SimpleDateFormat
+import com.example.onthejob.data.entry.effectiveLocalDate
+import java.time.format.TextStyle
 import java.util.Locale
 
-private val monthFormat = SimpleDateFormat("MMM", Locale.getDefault())
-private val dayFormat = SimpleDateFormat("d", Locale.getDefault())
-
 private fun stampParts(entry: Entry): Pair<String, String> {
-    val date = entry.createdAt ?: return "—" to "-"
-    return monthFormat.format(date).uppercase() to dayFormat.format(date)
+    val date = entry.effectiveLocalDate ?: return "—" to "-"
+    return date.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()).uppercase() to date.dayOfMonth.toString()
 }
 
 @Composable

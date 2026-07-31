@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.onthejob.data.entry.DayStatus
 import com.example.onthejob.data.entry.dayStatus
-import com.example.onthejob.data.entry.localDate
+import com.example.onthejob.data.entry.effectiveLocalDate
 import com.example.onthejob.ui.components.EntryCard
 import com.example.onthejob.ui.theme.*
 import java.time.LocalDate
@@ -141,7 +141,7 @@ fun CalendarScreen(
                 )
             } else {
                 selectedDayEntries.forEach { entry ->
-                    val date = entry.localDate ?: selectedDate
+                    val date = entry.effectiveLocalDate ?: selectedDate
                     EntryCard(
                         month = date.month.getDisplayName(TextStyle.SHORT, Locale.getDefault()).uppercase(),
                         day = date.dayOfMonth.toString(),
