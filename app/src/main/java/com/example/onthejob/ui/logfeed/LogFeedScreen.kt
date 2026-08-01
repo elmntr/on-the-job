@@ -13,6 +13,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.onthejob.data.entry.Entry
+import com.example.onthejob.ui.components.EditGoalDialog
 import com.example.onthejob.ui.components.EntryCard
 import com.example.onthejob.ui.components.HoursCard
 import com.example.onthejob.ui.theme.*
@@ -41,6 +45,9 @@ fun LogFeedScreen(
 ) {
     val entries by viewModel.entries.collectAsState()
     val hoursRendered by viewModel.hoursRendered.collectAsState()
+    val hoursRequired by viewModel.hoursRequired.collectAsState()
+
+    var showEditGoalDialog by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(Paper)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -60,7 +67,11 @@ fun LogFeedScreen(
             }
 
             Column(modifier = Modifier.weight(1f).padding(horizontal = 16.dp)) {
-                HoursCard(hoursRendered = hoursRendered, hoursRequired = viewModel.hoursRequired)
+                HoursCard(
+                    hoursRendered = hoursRendered,
+                    hoursRequired = hoursRequired,
+                    onEditGoal = { showEditGoalDialog = true },
+                )
                 Spacer(Modifier.height(16.dp))
 
                 Row(
@@ -130,5 +141,16 @@ fun LogFeedScreen(
         ) {
             Icon(Icons.Filled.Add, contentDescription = "New entry", tint = Ink)
         }
+    }
+
+    if (showEditGoalDialog) {
+        EditGoalDialog(
+            currentGoal = hoursRequired,
+            onDismiss = { showEditGoalDialog = false },
+            onConfirm = { newGoal ->
+                viewModel.updateHoursRequired(newGoal)
+                showEditGoalDialog = false
+            },
+        )
     }
 }

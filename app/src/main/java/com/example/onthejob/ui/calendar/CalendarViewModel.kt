@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import java.time.YearMonth
 
-class CalendarViewModel(
+class CalendarViewModel @JvmOverloads constructor(
     private val entryRepository: EntryRepository = EntryRepository(),
 ) : ViewModel() {
 

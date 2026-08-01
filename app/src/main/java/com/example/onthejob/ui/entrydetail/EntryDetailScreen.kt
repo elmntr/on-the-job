@@ -108,9 +108,11 @@ fun EntryDetailScreen(
             )
             Spacer(Modifier.weight(1f))
             if (!isEditing && current != null) {
-                val hoursText = if (current.hours == current.hours.toLong().toDouble())
-                    "${current.hours.toLong()}.0" else current.hours.toString()
-                Text("$hoursText hrs", fontFamily = MonoFontFamily, fontSize = 10.sp, color = Muted)
+                val h = current.hours.toInt()
+                val m = kotlin.math.round((current.hours - h) * 60).toInt()
+                val dec = String.format(java.util.Locale.US, "%.2f", current.hours).trimEnd('0').trimEnd('.')
+                val displayText = if (m > 0) "$dec hrs (${h}h ${m}m)" else "$dec hrs"
+                Text(displayText, fontFamily = MonoFontFamily, fontSize = 10.sp, color = Muted)
             }
         }
 
@@ -234,39 +236,115 @@ fun EntryDetailScreen(
                     )
                 }
 
-                var hoursText by remember { mutableStateOf("") }
-                LaunchedEffect(isEditing) {
+                var hoursInput by remember { mutableStateOf("") }
+                var minutesInput by remember { mutableStateOf("") }
+
+                LaunchedEffect(isEditing, editedHours) {
                     if (isEditing) {
-                        hoursText = if (editedHours == editedHours.toLong().toDouble())
-                            editedHours.toLong().toString() else editedHours.toString()
+                        val h = editedHours.toInt()
+                        val m = kotlin.math.round((editedHours - h) * 60).toInt()
+                        hoursInput = if (h > 0 || (h == 0 && m == 0)) h.toString() else "0"
+                        minutesInput = if (m > 0) m.toString() else ""
                     }
                 }
 
+                fun updateHours(hStr: String, mStr: String) {
+                    val hVal = hStr.toDoubleOrNull() ?: 0.0
+                    val mVal = mStr.toDoubleOrNull() ?: 0.0
+                    val totalHours = hVal + (mVal / 60.0)
+                    viewModel.onHoursChanged(totalHours)
+                }
+
                 Spacer(Modifier.height(12.dp))
-                FieldLabel("Hours")
-                Spacer(Modifier.height(7.dp))
-                OutlinedTextField(
-                    value = hoursText,
-                    onValueChange = { input ->
-                        hoursText = input
-                        val parsed = input.toDoubleOrNull()
-                        if (input.isEmpty()) viewModel.onHoursChanged(0.0)
-                        else if (parsed != null) viewModel.onHoursChanged(parsed)
-                    },
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    textStyle = TextStyle(fontFamily = MonoFontFamily, fontSize = 16.sp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = CardSurface,
-                        unfocusedContainerColor = CardSurface,
-                        focusedBorderColor = Ink,
-                        unfocusedBorderColor = Line,
-                        focusedTextColor = Ink,
-                        unfocusedTextColor = Ink,
-                    ),
-                )
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        FieldLabel("Hours")
+                        Spacer(Modifier.height(7.dp))
+                        OutlinedTextField(
+                            value = hoursInput,
+                            onValueChange = { input ->
+                                if (input.isEmpty() || input.matches(Regex("""^\d*\.?\d*$"""))) {
+                                    hoursInput = input
+                                    updateHours(input, minutesInput)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("0", color = Muted) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            textStyle = TextStyle(fontFamily = MonoFontFamily, fontSize = 16.sp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = CardSurface,
+                                unfocusedContainerColor = CardSurface,
+                                focusedBorderColor = Ink,
+                                unfocusedBorderColor = Line,
+                                focusedTextColor = Ink,
+                                unfocusedTextColor = Ink,
+                            ),
+                            suffix = { Text("hrs", fontFamily = MonoFontFamily, fontSize = 12.sp, color = Muted) },
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        FieldLabel("Minutes")
+                        Spacer(Modifier.height(7.dp))
+                        OutlinedTextField(
+                            value = minutesInput,
+                            onValueChange = { input ->
+                                if (input.isEmpty() || input.matches(Regex("""^\d{0,3}$"""))) {
+                                    minutesInput = input
+                                    updateHours(hoursInput, input)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("0", color = Muted) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            textStyle = TextStyle(fontFamily = MonoFontFamily, fontSize = 16.sp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = CardSurface,
+                                unfocusedContainerColor = CardSurface,
+                                focusedBorderColor = Ink,
+                                unfocusedBorderColor = Line,
+                                focusedTextColor = Ink,
+                                unfocusedTextColor = Ink,
+                            ),
+                            suffix = { Text("mins", fontFamily = MonoFontFamily, fontSize = 12.sp, color = Muted) },
+                        )
+                    }
+                }
+
+                val hVal = hoursInput.toDoubleOrNull() ?: 0.0
+                val mVal = minutesInput.toDoubleOrNull() ?: 0.0
+                val totalVal = hVal + (mVal / 60.0)
+                if (totalVal > 0) {
+                    Spacer(Modifier.height(4.dp))
+                    val hInt = totalVal.toInt()
+                    val mInt = kotlin.math.round((totalVal - hInt) * 60).toInt()
+                    val totalFormatted = String.format(java.util.Locale.US, "%.2f", totalVal).trimEnd('0').trimEnd('.')
+                    val displaySummary = buildString {
+                        if (hInt > 0) append("$hInt hr${if (hInt > 1) "s" else ""}")
+                        if (mInt > 0) {
+                            if (hInt > 0) append(" ")
+                            append("$mInt min${if (mInt > 1) "s" else ""}")
+                        }
+                        if (mInt > 0 || (hInt > 0 && totalFormatted != hInt.toString())) {
+                            append(" ($totalFormatted total hrs)")
+                        }
+                    }
+                    Text(
+                        text = displaySummary,
+                        fontFamily = MonoFontFamily,
+                        fontSize = 11.sp,
+                        color = Muted,
+                        modifier = Modifier.padding(start = 2.dp),
+                    )
+                }
 
                 if (updateState is EntryUpdateState.Error) {
                     Spacer(Modifier.height(8.dp))

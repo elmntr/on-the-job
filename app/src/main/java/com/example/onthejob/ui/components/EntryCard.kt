@@ -29,7 +29,10 @@ fun EntryCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
 ) {
-    val hoursText = if (hours == hours.toLong().toDouble()) "${hours.toLong()}.0" else hours.toString()
+    val hoursFormatted = String.format(java.util.Locale.US, "%.2f", hours).trimEnd('0').trimEnd('.')
+    val hInt = hours.toInt()
+    val mInt = kotlin.math.round((hours - hInt) * 60).toInt()
+    val hoursText = if (mInt > 0) "$hoursFormatted hrs (${hInt}h ${mInt}m)" else "$hoursFormatted hrs"
     val thumbnailCount = imageUrls.size
 
     Box(
@@ -103,7 +106,7 @@ fun EntryCard(
             ) {
                 StatusChip(formattingStatus)
                 Text(
-                    "$hoursText hrs",
+                    hoursText,
                     fontFamily = MonoFontFamily,
                     fontSize = 10.sp,
                     color = Muted,
