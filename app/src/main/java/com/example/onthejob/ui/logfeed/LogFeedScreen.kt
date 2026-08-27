@@ -41,13 +41,19 @@ private fun stampParts(entry: Entry): Pair<String, String> {
 fun LogFeedScreen(
     onNewEntry: () -> Unit,
     onOpenEntry: (String) -> Unit,
+    activeInstance: com.example.onthejob.data.ojt.OjtInstance?,
+    instances: List<com.example.onthejob.data.ojt.OjtInstance>,
+    onSelectInstance: (String) -> Unit,
+    onCreateInstance: (String, Double) -> Unit,
+    onUpdateInstanceTarget: (Double) -> Unit,
     viewModel: LogFeedViewModel = viewModel(),
 ) {
     val entries by viewModel.entries.collectAsState()
     val hoursRendered by viewModel.hoursRendered.collectAsState()
-    val hoursRequired by viewModel.hoursRequired.collectAsState()
+    val hoursRequired = activeInstance?.hoursRequired ?: 486.0
 
     var showEditGoalDialog by remember { mutableStateOf(false) }
+    var showNewOjtDialog by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize().background(Paper)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -57,12 +63,19 @@ fun LogFeedScreen(
                     .padding(horizontal = 16.dp)
                     .padding(top = 10.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
                     "ON THE JOB",
                     fontFamily = DisplayFontFamily,
                     fontSize = 15.sp,
                     color = Ink,
+                )
+                com.example.onthejob.ui.components.OjtInstancePicker(
+                    activeInstance = activeInstance,
+                    instances = instances,
+                    onSelectInstance = onSelectInstance,
+                    onNewInstanceClick = { showNewOjtDialog = true },
                 )
             }
 
@@ -148,8 +161,18 @@ fun LogFeedScreen(
             currentGoal = hoursRequired,
             onDismiss = { showEditGoalDialog = false },
             onConfirm = { newGoal ->
-                viewModel.updateHoursRequired(newGoal)
+                onUpdateInstanceTarget(newGoal)
                 showEditGoalDialog = false
+            },
+        )
+    }
+
+    if (showNewOjtDialog) {
+        com.example.onthejob.ui.components.NewOjtDialog(
+            onDismiss = { showNewOjtDialog = false },
+            onConfirm = { name, target ->
+                onCreateInstance(name, target)
+                showNewOjtDialog = false
             },
         )
     }

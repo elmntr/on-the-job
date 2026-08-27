@@ -1,4 +1,5 @@
-# OnTheJob (OJT Daily Log & Hours Tracker) 🛠️📱
+
+/# OnTheJob (OJT Daily Log & Hours Tracker) 🛠️📱
 
 [![Release](https://img.shields.io/badge/Release-v1.2-blue?style=for-the-badge&logo=github)](https://github.com/elmntr/on-the-job/releases/tag/ver1.2)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-purple?style=for-the-badge&logo=kotlin)](https://kotlinlang.org/)

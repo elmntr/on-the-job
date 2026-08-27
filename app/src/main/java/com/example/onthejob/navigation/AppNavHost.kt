@@ -31,9 +31,23 @@ import com.example.onthejob.ui.theme.Ink
 import com.example.onthejob.ui.theme.Ink2
 import com.example.onthejob.ui.theme.Paper
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.onthejob.data.ojt.OjtInstanceViewModel
+
 @Composable
-fun AppNavHost() {
+fun AppNavHost(
+    ojtViewModel: OjtInstanceViewModel = viewModel(),
+) {
     val backStack = rememberNavBackStack(Route.LogFeed)
+
+    val instances by ojtViewModel.instances.collectAsState()
+    val activeInstance by ojtViewModel.activeInstance.collectAsState()
+    val activeInstanceId by ojtViewModel.activeInstanceId.collectAsState()
+    val useAiFormatting by ojtViewModel.useAiFormatting.collectAsState()
 
     // Bottom nav treated as another dark surface (same family as HoursCard),
     // rather than left on Material3 defaults — DESIGN.md doesn't cover this
@@ -92,15 +106,49 @@ fun AppNavHost() {
             ),
             entryProvider = entryProvider {
                 entry<Route.LogFeed> {
+                    val currentInstance = activeInstance
+                    val targetHours = currentInstance?.hoursRequired ?: 486.0
+                    val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext as android.app.Application
                     LogFeedScreen(
                         onNewEntry = { backStack.add(Route.NewEntry) },
                         onOpenEntry = { id -> backStack.add(Route.EntryDetail(id)) },
+                        activeInstance = currentInstance,
+                        instances = instances,
+                        onSelectInstance = { ojtViewModel.setActiveInstance(it) },
+                        onCreateInstance = { name, target -> ojtViewModel.createInstance(name, target) },
+                        onUpdateInstanceTarget = { newTarget ->
+                            currentInstance?.id?.let { id ->
+                                ojtViewModel.updateInstanceTarget(id, currentInstance.name, newTarget)
+                            }
+                        },
+                        viewModel = viewModel(
+                            key = "LogFeedViewModel_$activeInstanceId",
+                            factory = androidx.lifecycle.viewmodel.viewModelFactory {
+                                initializer {
+                                    com.example.onthejob.ui.logfeed.LogFeedViewModel(
+                                        application = appContext,
+                                        activeInstanceId = activeInstanceId,
+                                        hoursRequiredTarget = targetHours,
+                                    )
+                                }
+                            }
+                        )
                     )
                 }
                 entry<Route.Calendar> {
-                    CalendarScreen(onOpenEntry = { id -> backStack.add(Route.EntryDetail(id)) })
+                    CalendarScreen(
+                        activeInstanceId = activeInstanceId,
+                        onOpenEntry = { id -> backStack.add(Route.EntryDetail(id)) },
+                    )
                 }
-                entry<Route.NewEntry> { NewEntryScreen(onBack = { backStack.removeLastOrNull() }) }
+                entry<Route.NewEntry> {
+                    NewEntryScreen(
+                        onBack = { backStack.removeLastOrNull() },
+                        activeInstanceId = activeInstanceId,
+                        formatWithAi = useAiFormatting,
+                        onFormatWithAiChange = { ojtViewModel.setUseAiFormatting(it) },
+                    )
+                }
                 entry<Route.EntryDetail> { key ->
                     EntryDetailScreen(
                         entryId = key.entryId,
