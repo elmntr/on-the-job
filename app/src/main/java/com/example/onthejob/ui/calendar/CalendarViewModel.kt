@@ -17,17 +17,15 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 class CalendarViewModel @JvmOverloads constructor(
+    activeInstanceId: String = "",
     private val entryRepository: EntryRepository = EntryRepository(),
 ) : ViewModel() {
 
     private val userId: String? = FirebaseAuth.getInstance().currentUser?.uid
 
-    // Reuses EntryRepository.getEntries() as-is — same live listener LogFeed
-    // uses, no new Firestore query. Fine at current scale (single user,
-    // Spark tier, no date-range filter needed yet); revisit only if entry
-    // volume ever makes fetching full history wasteful.
+    // Reuses EntryRepository.getEntries() scoped to activeInstanceId
     val entries: StateFlow<List<Entry>> =
-        (userId?.let { entryRepository.getEntries(it) } ?: flowOf(emptyList()))
+        (userId?.let { entryRepository.getEntries(it, activeInstanceId) } ?: flowOf(emptyList()))
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _currentMonth = MutableStateFlow(YearMonth.now())

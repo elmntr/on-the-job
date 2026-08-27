@@ -42,7 +42,13 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun NewEntryScreen(onBack: () -> Unit, viewModel: NewEntryViewModel = viewModel()) {
+fun NewEntryScreen(
+    onBack: () -> Unit,
+    activeInstanceId: String = "",
+    formatWithAi: Boolean = true,
+    onFormatWithAiChange: (Boolean) -> Unit = {},
+    viewModel: NewEntryViewModel = viewModel(),
+) {
     val photos by viewModel.photos.collectAsState()
     val description by viewModel.description.collectAsState()
     val hours by viewModel.hours.collectAsState()
@@ -257,6 +263,34 @@ fun NewEntryScreen(onBack: () -> Unit, viewModel: NewEntryViewModel = viewModel(
                 )
             }
 
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column {
+                    FieldLabel("Format with AI")
+                    Text(
+                        "Polishes notes into a professional narrative",
+                        fontFamily = BodyFontFamily,
+                        fontSize = 11.sp,
+                        color = Muted,
+                    )
+                }
+                Switch(
+                    checked = formatWithAi,
+                    onCheckedChange = onFormatWithAiChange,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Paper,
+                        checkedTrackColor = Ink,
+                        uncheckedThumbColor = Ink,
+                        uncheckedTrackColor = Line,
+                    ),
+                )
+            }
+
             if (saveState is SaveState.Error) {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -272,7 +306,7 @@ fun NewEntryScreen(onBack: () -> Unit, viewModel: NewEntryViewModel = viewModel(
         Box(modifier = Modifier.padding(16.dp)) {
             PrimaryButton(
                 text = "Save entry",
-                onClick = { viewModel.saveEntry() },
+                onClick = { viewModel.saveEntry(ojtInstanceId = activeInstanceId, formatWithAi = formatWithAi) },
                 enabled = saveState !is SaveState.Saving,
                 loading = saveState is SaveState.Saving,
             )

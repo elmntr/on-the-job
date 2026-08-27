@@ -26,6 +26,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.onthejob.data.entry.DayStatus
 import com.example.onthejob.data.entry.dayStatus
 import com.example.onthejob.data.entry.effectiveLocalDate
@@ -37,8 +39,14 @@ import java.util.Locale
 
 @Composable
 fun CalendarScreen(
-    viewModel: CalendarViewModel = viewModel(),
+    activeInstanceId: String = "",
     onOpenEntry: (String) -> Unit = {},
+    viewModel: CalendarViewModel = viewModel(
+        key = "CalendarViewModel_$activeInstanceId",
+        factory = androidx.lifecycle.viewmodel.viewModelFactory {
+            initializer { CalendarViewModel(activeInstanceId = activeInstanceId) }
+        }
+    ),
 ) {
     val currentMonth by viewModel.currentMonth.collectAsState()
     val monthGrid by viewModel.monthGrid.collectAsState()
