@@ -14,7 +14,7 @@
 
 Get the latest pre-compiled APK directly from the official release page:
 
-📥 **[Download OnTheJob v1.2 APK](https://github.com/elmntr/on-the-job/releases/tag/ver1.2)**
+📥 **[Download OnTheJob v1.3 APK](https://github.com/elmntr/on-the-job/releases/tag/ver1.3)**
 
 ---
 
