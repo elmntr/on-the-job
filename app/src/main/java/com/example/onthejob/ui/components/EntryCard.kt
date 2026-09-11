@@ -14,6 +14,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.onthejob.data.upload.photoPreviewUrl
 import coil3.compose.AsyncImage
 import com.example.onthejob.ui.theme.*
 import androidx.compose.foundation.clickable
@@ -61,7 +62,7 @@ fun EntryCard(
                     // First tile: the entry's actual first photo, if we have one.
                     if (imageUrls.isNotEmpty()) {
                         AsyncImage(
-                            model = imageUrls[0],
+                            model = photoPreviewUrl(imageUrls[0]),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier

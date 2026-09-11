@@ -35,3 +35,6 @@ dist/
 *.jks
 *.keystore
 keystore.properties
+
+#Specific Files
+Handover.md

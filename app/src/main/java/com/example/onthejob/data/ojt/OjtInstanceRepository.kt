@@ -1,7 +1,7 @@
 package com.example.onthejob.data.ojt
 
 import com.example.onthejob.util.awaitTask
-import com.google.firebase.firestore.DocumentSnapshot
+import com.example.onthejob.data.firestore.toPlacement
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
@@ -52,7 +52,7 @@ class OjtInstanceRepository(
                     return@addSnapshotListener
                 }
                 val instances = snapshot?.documents?.mapNotNull {
-                    it.toObject(OjtInstance::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                    it.toPlacement()
                 } ?: emptyList()
                 trySend(if (instances.isEmpty()) listOf(OjtInstance(id = "default", name = DEFAULT_INSTANCE_NAME, hoursRequired = 486.0)) else instances.sortedBy { it.createdAt?.time ?: 0L })
             }

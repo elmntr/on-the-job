@@ -25,9 +25,7 @@ class CloudinaryUploader(
      * Uploads from a durable local File (rather than a content:// Uri) so this
      * same method works both for the immediate in-app attempt and for a later
      * WorkManager-driven retry, which only has a stable file path to work
-     * from. Content type is treated as image/jpeg (photos are always cached
-     * under a .jpg name) — Cloudinary detects actual format from file
-     * content regardless of the extension, so this doesn't affect correctness.
+     * from. Validate actual raster contents before sending any data.
      */
     suspend fun upload(
         file: File,
@@ -39,8 +37,18 @@ class CloudinaryUploader(
             if (!file.exists()) {
                 return@withContext Result.failure(IOException("Cached photo file no longer exists"))
             }
+            if (file.length() !in 1..10L * 1024 * 1024) {
+                return@withContext Result.failure(IOException("Choose photos up to 10 MB"))
+            }
             val bytes = file.readBytes()
-            val mediaType = "image/jpeg".toMediaTypeOrNull()
+            val format = photoFormat(bytes)
+                ?: return@withContext Result.failure(IOException("Only JPEG, PNG, and WebP photos are allowed"))
+            val options = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+            if (options.outWidth <= 0 || options.outHeight <= 0 || options.outWidth.toLong() * options.outHeight > 40_000_000) {
+                return@withContext Result.failure(IOException("Photo is damaged or larger than 40 megapixels"))
+            }
+            val mediaType = "image/${if (format == "jpg") "jpeg" else format}".toMediaTypeOrNull()
             val progressBody = object : RequestBody() {
                 override fun contentType() = mediaType
                 override fun contentLength() = bytes.size.toLong()
@@ -58,7 +66,7 @@ class CloudinaryUploader(
             val multipart = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("upload_preset", uploadPreset)
-                .addFormDataPart("file", "photo.jpg", progressBody)
+                .addFormDataPart("file", "photo.$format", progressBody)
                 .build()
             val request = Request.Builder()
                 .url("https://api.cloudinary.com/v1_1/$cloudName/image/upload")

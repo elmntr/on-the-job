@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.onthejob.data.upload.photoPreviewUrl
 import coil3.compose.AsyncImage
 import com.example.onthejob.data.upload.PhotoUploadState
 import com.example.onthejob.data.upload.PickedPhoto
@@ -416,7 +417,7 @@ private fun RemotePhotoTile(url: String, onRemove: (() -> Unit)?, onClick: (() -
             .clip(RoundedCornerShape(8.dp))
             .let { if (onClick != null) it.clickable(onClick = onClick) else it },
     ) {
-        AsyncImage(model = url, contentDescription = null, modifier = Modifier.fillMaxSize())
+        AsyncImage(model = photoPreviewUrl(url), contentDescription = null, modifier = Modifier.fillMaxSize())
         if (onRemove != null) {
             Box(
                 modifier = Modifier
