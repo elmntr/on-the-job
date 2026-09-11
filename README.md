@@ -20,7 +20,7 @@ Use OnTheJob directly in your browser on iPhone, iPad, Android, or desktop. Sign
 
 Prefer the Android app? Download the APK from the official release page:
 
-📥 **[Download OnTheJob v1.3 APK](https://github.com/elmntr/on-the-job/releases/tag/ver1.3)**
+📥 **[Download OnTheJob v1.3 APK](https://github.com/elmntr/on-the-job/releases/tag/1.3_c2)**
 
 ---
 
