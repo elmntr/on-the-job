@@ -1,7 +1,7 @@
 package com.example.onthejob.data.entry
 
 import com.example.onthejob.util.awaitTask
-import com.google.firebase.firestore.DocumentSnapshot
+import com.example.onthejob.data.firestore.toEntry
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
@@ -92,7 +92,7 @@ class EntryRepository(
                     return@addSnapshotListener
                 }
                 val entries = snapshot?.documents?.mapNotNull {
-                    it.toObject(Entry::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                    it.toEntry()
                 } ?: emptyList()
 
                 val filtered = if (!ojtInstanceId.isNullOrEmpty()) {
@@ -128,7 +128,7 @@ class EntryRepository(
                     close(error)
                     return@addSnapshotListener
                 }
-                trySend(snapshot?.toObject(Entry::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE))
+                trySend(snapshot?.toEntry())
             }
         awaitClose { registration.remove() }
     }

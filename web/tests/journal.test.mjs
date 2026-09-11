@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {entryDate,hoursLabel,localDate,placementEntries,totalMinutes,validateLog} from '../lib/journal.ts';
+const entry=(id,placement='',hours=1)=>({id,ojtInstanceId:placement,hours,entryDate:'2026-08-01'});
+test('legacy logs belong only to the first placement',()=>{const logs=[entry('old'),entry('one','a'),entry('two','b')];assert.deepEqual(placementEntries(logs,'a','a').map(e=>e.id),['old','one']);assert.deepEqual(placementEntries(logs,'b','a').map(e=>e.id),['two']);});
+test('hours use integer minutes instead of floating point sums',()=>{assert.equal(totalMinutes([entry('1','a',1/60),entry('2','a',7+59/60)]),480);assert.equal(hoursLabel(480),'8h');assert.equal(hoursLabel(481),'8h 1m');});
+test('backdated entries sort by work day, not creation time',()=>{assert.equal(placementEntries([{...entry('new','a'),entryDate:'2026-08-02'},entry('old','a')],'a','a')[0].id,'new');});
+test('legacy timestamps are interpreted in the local timezone',()=>{const date=new Date(2026,7,3,23,30);assert.equal(entryDate({...entry('old'),entryDate:'',createdAt:{toDate:()=>date}}),localDate(date));});
+test('valid dates and duration boundaries',()=>{assert.equal(validateLog('A task',0,1,'2026-01-01'),'');assert.equal(validateLog('A task',24,0,'2026-01-01'),'');assert.notEqual(validateLog('A task',24,1,'2026-01-01'),'');assert.notEqual(validateLog('A task',0,0,'2026-01-01'),'');assert.notEqual(validateLog('A task',8,60,'2026-01-01'),'');});
+test('invalid, future dates and empty notes are rejected',()=>{for(const date of ['2026-02-30','2099-01-01','invalid'])assert.notEqual(validateLog('A task',1,0,date),'');assert.notEqual(validateLog(' ',1,0,'2026-01-01'),'');});

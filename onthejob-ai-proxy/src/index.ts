@@ -1,7 +1,8 @@
-import { importX509, jwtVerify, type JWTVerifyGetKey, type KeyLike } from "jose";
+import { importX509, jwtVerify, type JWTVerifyGetKey } from "jose";
 
 interface Env {
   GEMINI_API_KEY: string;
+  AI_RATE_LIMITER: {limit(options: {key: string}): Promise<{success: boolean}>};
 }
 
 // ---- Firebase Auth ID token verification -------------------------------
@@ -23,7 +24,7 @@ const FIREBASE_CERT_URL =
   "https://www.googleapis.com/service_accounts/v1/metadata/x509/securetoken@system.gserviceaccount.com";
 
 let certCache: { certs: Record<string, string>; expiresAt: number } | null = null;
-const importedKeyCache = new Map<string, KeyLike>();
+const importedKeyCache = new Map<string, CryptoKey>();
 
 async function getFirebaseCerts(): Promise<Record<string, string>> {
   const now = Date.now();
@@ -31,7 +32,7 @@ async function getFirebaseCerts(): Promise<Record<string, string>> {
     return certCache.certs;
   }
 
-  const res = await fetch(FIREBASE_CERT_URL);
+  const res = await fetch(FIREBASE_CERT_URL, {signal: AbortSignal.timeout(10000)});
   if (!res.ok) {
     throw new Error(`Failed to fetch Firebase certs: ${res.status}`);
   }
@@ -53,10 +54,10 @@ const getKey: JWTVerifyGetKey = async (header) => {
   const kid = header.kid;
   if (!kid) throw new Error("Token header missing kid");
 
+  const certs = await getFirebaseCerts();
   const cached = importedKeyCache.get(kid);
   if (cached) return cached;
 
-  const certs = await getFirebaseCerts();
   const pem = certs[kid];
   if (!pem) throw new Error(`No matching Firebase cert for kid: ${kid}`);
 
@@ -73,7 +74,7 @@ const getKey: JWTVerifyGetKey = async (header) => {
 async function verifyFirebaseAuth(request: Request): Promise<{ uid: string } | null> {
   const authHeader = request.headers.get("Authorization") ?? "";
   const match = authHeader.match(/^Bearer (.+)$/);
-  if (!match) return null;
+  if (!match || match[1].length > 8192) return null;
 
   const token = match[1];
   try {
@@ -82,18 +83,42 @@ async function verifyFirebaseAuth(request: Request): Promise<{ uid: string } | n
       audience: FIREBASE_PROJECT_ID,
       algorithms: ["RS256"],
     });
-    if (!payload.sub) return null;
+    if (!payload.sub || payload.sub.length > 128 || typeof payload.exp !== "number" || typeof payload.iat !== "number" || payload.iat > Date.now()/1000 + 60) return null;
     return { uid: payload.sub };
-  } catch (err) {
-    console.error("Firebase ID token verification failed:", err);
+  } catch {
     return null;
   }
 }
 
 // -------------------------------------------------------------------------
 
-export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+// Count actual streamed bytes; Content-Length is optional and cannot be trusted.
+export async function readRawText(request: Request): Promise<string> {
+  if (request.headers.get('content-type')?.split(';')[0].trim().toLowerCase() !== 'application/json') throw new Error('Expected JSON');
+  if (Number(request.headers.get('content-length')) > 131072) throw new RangeError('Too large');
+  const reader = request.body?.getReader();
+  if (!reader) throw new Error('Empty body');
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > 131072) {await reader.cancel(); throw new RangeError('Too large');}
+      chunks.push(value);
+    }
+  } finally {reader.releaseLock();}
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {bytes.set(chunk, offset); offset += chunk.length;}
+  const body: unknown = JSON.parse(new TextDecoder('utf-8', {fatal: true, ignoreBOM: false}).decode(bytes));
+  if (!body || typeof body !== 'object' || !('rawText' in body) || typeof body.rawText !== 'string' || !body.rawText.trim()) throw new Error('Invalid text');
+  if (body.rawText.length > 20000) throw new RangeError('Too much text');
+  return body.rawText;
+}
+
+async function handleRequest(request: Request, env: Env): Promise<Response> {
     // CORS preflight (Android app calls this directly, but keep it safe if you ever test from a browser)
     if (request.method === "OPTIONS") {
       return new Response(null, {
@@ -119,22 +144,21 @@ export default {
 
     let rawText: string;
     try {
-      const body = (await request.json()) as { rawText?: string };
-      rawText = body.rawText ?? "";
-      if (!rawText.trim()) {
-        return Response.json({ success: false, reason: "failed_other" }, { status: 400 });
-      }
-    } catch (err) {
-      console.error("Gemini proxy error:", err);
-      return Response.json({ success: false, reason: "failed_other", debug: String(err) });
+      rawText = await readRawText(request);
+    } catch (error) {
+      return Response.json({ success: false, reason: "failed_other" }, {status: error instanceof RangeError ? 413 : 400});
     }
+    const allowed = await env.AI_RATE_LIMITER.limit({key: auth.uid});
+    if (!allowed.success) return Response.json({success: false, reason: "rate_limited"}, {status: 429, headers: {"Retry-After": "60"}});
     try {
       const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${env.GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
+          signal: AbortSignal.timeout(25000),
           body: JSON.stringify({
+            generationConfig: {maxOutputTokens: 8192},
             contents: [
               {
                 parts: [
@@ -157,18 +181,30 @@ export default {
         });
       }
       if (!geminiRes.ok) {
-        const errText = await geminiRes.text();
-        console.error("Gemini API error:", geminiRes.status, errText);
-        return Response.json({ success: false, reason: "failed_other", debug: errText });
+        await geminiRes.body?.cancel();
+        return Response.json({ success: false, reason: "failed_other" }, {status: 502});
       }
       const data = (await geminiRes.json()) as any;
       const formattedText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-      if (!formattedText.trim()) {
+      if (typeof formattedText !== "string" || !formattedText.trim() || formattedText.length > 40000) {
         return Response.json({ success: false, reason: "failed_other" });
       }
       return Response.json({ success: true, formattedText });
     } catch (err) {
       return Response.json({ success: false, reason: "failed_other" });
     }
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const response = await handleRequest(request, env).catch(() => Response.json({success: false, reason: "failed_other"}, {status: 503}));
+    // Bearer tokens authorize requests; CORS must also cover errors and success.
+    const headers = new Headers(response.headers);
+    headers.set("Cache-Control", "no-store");
+    headers.set("X-Content-Type-Options", "nosniff");
+    headers.set("Access-Control-Allow-Origin", "*");
+    headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    return new Response(response.body, { status: response.status, headers });
   },
 } satisfies ExportedHandler<Env>;
