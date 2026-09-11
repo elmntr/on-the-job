@@ -886,3 +886,34 @@ a svg,
 .upload-label input {
   flex: 1 1 100%;
 }
+
+/* Floating confirmations leave the journal layout in place. */
+.journal-toast-viewport {
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  left: max(16px, env(safe-area-inset-left, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  width: auto;
+  max-width: 400px;
+  margin-inline: auto;
+  z-index: 100;
+}
+.journal-toast {
+  background: #1d2420;
+  color: #eaf1ea;
+  border: 1px solid #5f7d77;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px #1d242033;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+.journal-toast[data-starting-style],
+.journal-toast[data-ending-style] {
+  opacity: 0;
+}
+.journal-toast-content { padding: 12px 16px; }
+.journal-toast-content > svg { flex-shrink: 0; }
+.journal-toast-title { flex: 1; font-size: 1rem; line-height: 1.5; overflow-wrap: anywhere; }
+.journal-toast-close { color: inherit; min-width: 44px; min-height: 44px; }
+.journal-toast-close:hover { color: inherit; background: #ffffff18; }
+@media (prefers-reduced-motion: reduce) {
+  .journal-toast, .journal-toast-content { transition: none; }
+}
