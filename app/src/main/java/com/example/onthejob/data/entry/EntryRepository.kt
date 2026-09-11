@@ -1,7 +1,7 @@
 package com.example.onthejob.data.entry
 
 import com.example.onthejob.util.awaitTask
-import com.google.firebase.firestore.DocumentSnapshot
+import com.example.onthejob.data.firestore.toEntry
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
@@ -78,36 +78,32 @@ class EntryRepository(
         }
 
     /**
-     * Live stream of a user's entries, newest first. Uses a snapshot listener
-     * (not a one-shot get()) so the feed reflects async formattingStatus
-     * changes automatically — e.g. AI formatting finishing after the entry
-     * was already saved, or the future Cloudflare Cron retry flipping a
-     * failed_quota entry to done once quota resets. Both can happen while
-     * this screen is already open.
-     *
-     * Firestore's offline cache means this also emits immediately from local
-     * data when offline, then again when the server confirms/reconciles —
-     * consistent with the offline-first behavior elsewhere in the app.
+     * Live stream of a user's entries, optionally filtered by ojtInstanceId, newest first.
+     * Uses client-side filtering for ojtInstanceId so legacy entries without an explicit
+     * ojtInstanceId are handled gracefully during/after migration.
      */
-    fun getEntries(userId: String): Flow<List<Entry>> = callbackFlow {
+    fun getEntries(userId: String, ojtInstanceId: String? = null): Flow<List<Entry>> = callbackFlow {
         val registration = firestore.collection("users")
             .document(userId)
             .collection("entries")
-            // No orderBy here anymore — entryDate is missing on pre-migration
-            // entries, and Firestore orderBy silently drops docs missing the
-            // ordered field. Sorting client-side avoids that entirely.
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
                     return@addSnapshotListener
                 }
                 val entries = snapshot?.documents?.mapNotNull {
-                    it.toObject(Entry::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE)
+                    it.toEntry()
                 } ?: emptyList()
 
-                val sorted = entries.sortedWith(
+                val filtered = if (!ojtInstanceId.isNullOrEmpty()) {
+                    entries.filter { it.ojtInstanceId == ojtInstanceId || it.ojtInstanceId.isEmpty() }
+                } else {
+                    entries
+                }
+
+                val sorted = filtered.sortedWith(
                     compareByDescending<Entry> { it.effectiveLocalDate ?: LocalDate.MIN }
-                        .thenByDescending { it.createdAt?.time ?: 0L } // tiebreak same-day entries by creation order
+                        .thenByDescending { it.createdAt?.time ?: 0L }
                 )
                 trySend(sorted)
             }
@@ -132,7 +128,7 @@ class EntryRepository(
                     close(error)
                     return@addSnapshotListener
                 }
-                trySend(snapshot?.toObject(Entry::class.java, DocumentSnapshot.ServerTimestampBehavior.ESTIMATE))
+                trySend(snapshot?.toEntry())
             }
         awaitClose { registration.remove() }
     }

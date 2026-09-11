@@ -11,21 +11,29 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.onthejob.ui.theme.AmberDark
 import com.example.onthejob.ui.theme.MonoFontFamily
+import com.example.onthejob.ui.theme.Muted
 import com.example.onthejob.ui.theme.Success
 import com.example.onthejob.ui.theme.SuccessBg
 
 /**
- * Maps directly from Entry.formattingStatus. Per CLAUDE.md/DESIGN.md, the
- * student only ever sees two states here — "Polished" or "Formatting
- * pending" — failed_quota/failed_other collapse into "pending" at the UI
- * layer; raw failure reasons are never surfaced.
+ * Maps directly from Entry.formattingStatus. Per DESIGN.md, the student
+ * only ever sees human-friendly states — raw failure reasons and technical
+ * status values are never surfaced:
+ *   "done"    → green "Polished" chip
+ *   "skipped" → neutral "Raw entry" chip (user intentionally skipped AI)
+ *   anything else → amber "Formatting pending" chip
  */
 @Composable
 fun StatusChip(formattingStatus: String, modifier: Modifier = Modifier) {
-    val isDone = formattingStatus == "done"
-    val bg = if (isDone) SuccessBg else AmberDark.copy(alpha = 0.18f)
-    val fg = if (isDone) Success else AmberDark
-    val label = if (isDone) "Polished" else "Formatting pending"
+    val (bg, fg, label) = when (formattingStatus) {
+        "done" -> Triple(SuccessBg, Success, "Polished")
+        "skipped" -> Triple(
+            Muted.copy(alpha = 0.12f),
+            Muted,
+            "Raw entry",
+        )
+        else -> Triple(AmberDark.copy(alpha = 0.18f), AmberDark, "Formatting pending")
+    }
 
     Text(
         text = label,

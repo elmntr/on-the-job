@@ -249,11 +249,10 @@ class EntryDetailViewModel(
             val uploadedNewUrls = _newPhotos.value.mapNotNull { (it.state as? PhotoUploadState.Success)?.url }
             val finalImageUrls = _existingPhotoUrls.value + uploadedNewUrls
 
-            // Regenerate already replaced editedText in-place if it succeeded;
-            // if the entry was previously failed_quota/failed_other and the
-            // text wasn't touched at all, keep its existing formattingStatus
-            // rather than silently upgrading it to "done" on an unrelated edit.
-            val newStatus = if (_editedText.value != current.text) "done" else current.formattingStatus
+            // Regenerate already replaced editedText in-place if it succeeded (setting status to "done");
+            // if the entry was "skipped", "failed_quota", or "failed_other", and the user didn't regenerate it,
+            // keep its existing formattingStatus rather than silently overriding it.
+            val newStatus = if (_editedText.value != current.text && current.formattingStatus != "skipped") "done" else current.formattingStatus
 
             entryRepository.updateEntry(
                 userId = uid,

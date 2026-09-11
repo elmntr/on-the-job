@@ -141,12 +141,11 @@ class NewEntryViewModel(application: Application) : AndroidViewModel(application
     }
 
     /**
-     * Full save flow: description -> AI format (with retry/fallback) -> Firestore.
-     * The entry is ALWAYS saved, even if AI formatting fails, or some photos
-     * haven't finished uploading yet — those get handed off to WorkManager
-     * to finish in the background and attach themselves once done.
+     * Full save flow: description -> AI format (if enabled; with retry/fallback) -> Firestore.
+     * If formatWithAi is false (or user disabled AI), skips AI format call completely and
+     * sets formattingStatus to "skipped".
      */
-    fun saveEntry() {
+    fun saveEntry(ojtInstanceId: String, formatWithAi: Boolean = true) {
         val rawText = _description.value.trim()
         if (rawText.isEmpty()) {
             _saveState.value = SaveState.Error("Please add a description before saving.")
@@ -166,31 +165,34 @@ class NewEntryViewModel(application: Application) : AndroidViewModel(application
             val imageUrls = currentPhotos.mapNotNull { (it.state as? PhotoUploadState.Success)?.url }
 
             var finalText = rawText
-            var formattingStatus = "failed_other"
+            var formattingStatus = "skipped"
 
-            val idToken = if (NetworkStatus.isOnline(getApplication())) {
-                runCatching { user.getIdToken(false).awaitTask().token }.getOrNull()
-            } else {
-                null
-            }
-
-            if (idToken != null) {
-                var result = attemptFormat(rawText, idToken)
-
-                if (result is AiFormatResult.Failure && result.reason == "unauthorized") {
-                    val freshToken = runCatching { user.getIdToken(true).awaitTask().token }.getOrNull()
-                    if (freshToken != null) {
-                        result = attemptFormat(rawText, freshToken)
-                    }
+            if (formatWithAi) {
+                formattingStatus = "failed_other"
+                val idToken = if (NetworkStatus.isOnline(getApplication())) {
+                    runCatching { user.getIdToken(false).awaitTask().token }.getOrNull()
+                } else {
+                    null
                 }
 
-                when (result) {
-                    is AiFormatResult.Success -> {
-                        finalText = result.formattedText
-                        formattingStatus = "done"
+                if (idToken != null) {
+                    var result = attemptFormat(rawText, idToken)
+
+                    if (result is AiFormatResult.Failure && result.reason == "unauthorized") {
+                        val freshToken = runCatching { user.getIdToken(true).awaitTask().token }.getOrNull()
+                        if (freshToken != null) {
+                            result = attemptFormat(rawText, freshToken)
+                        }
                     }
-                    is AiFormatResult.Failure -> {
-                        formattingStatus = if (result.reason == "quota_exhausted") "failed_quota" else "failed_other"
+
+                    when (result) {
+                        is AiFormatResult.Success -> {
+                            finalText = result.formattedText
+                            formattingStatus = "done"
+                        }
+                        is AiFormatResult.Failure -> {
+                            formattingStatus = if (result.reason == "quota_exhausted") "failed_quota" else "failed_other"
+                        }
                     }
                 }
             }
@@ -203,6 +205,7 @@ class NewEntryViewModel(application: Application) : AndroidViewModel(application
                 hours = _hours.value,
                 formattingStatus = formattingStatus,
                 entryDate = _entryDate.value.toString(), // LocalDate.toString() is already ISO "yyyy-MM-dd"
+                ojtInstanceId = ojtInstanceId,
             )
 
             entryRepository.saveEntry(entry).fold(

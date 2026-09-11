@@ -7,16 +7,24 @@ import java.util.Date
 /**
  * A single OJT log entry. Stored at users/{uid}/entries/{entryId} in Firestore.
  *
- * `formattingStatus` mirrors the states defined in CLAUDE.md:
- *   "pending"      — not yet attempted (not currently used on write; reserved
- *                    for a future queued-retry flow after quota reset)
- *   "done"         — AI formatting succeeded, `text` holds the polished version
+ * `formattingStatus` mirrors the states defined in DECISIONS.md:
+ *   "pending"      — not yet attempted (reserved for future queued-retry flow)
+ *   "done"         — AI formatting succeeded; `text` holds the polished version
+ *   "skipped"      — user opted out of AI formatting via the "Format with AI"
+ *                    toggle; `text` == `rawText`. Never shown as an error state —
+ *                    maps to a neutral "Raw entry" chip. Eligible for Regenerate
+ *                    on Entry Detail, so the student can opt in later.
  *   "failed_quota" — daily Gemini quota exhausted; `text` holds the raw
  *                    description as a fallback; eligible for later re-processing
  *                    once quota resets (via the Cloudflare Cron Trigger, not yet built)
  *   "failed_other" — any other failure (rate limit exhausted after retry,
  *                    network error, unexpected error); `text` holds the raw
  *                    description as a fallback
+ *
+ * `ojtInstanceId` scopes this entry to a specific OJT placement. See
+ * DECISIONS.md for the data-model choice. Blank on legacy entries that
+ * pre-date multi-instance support; the migration in OjtInstanceRepository
+ * backfills this field on first load.
  */
 data class Entry(
     @DocumentId var id: String = "",
@@ -27,5 +35,6 @@ data class Entry(
     val hours: Double = 0.0,
     val formattingStatus: String = "failed_other",
     val entryDate: String = "",
+    val ojtInstanceId: String = "",
     @ServerTimestamp val createdAt: Date? = null,
 )

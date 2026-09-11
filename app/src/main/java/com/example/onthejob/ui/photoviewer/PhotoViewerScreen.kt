@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.onthejob.data.upload.photoPreviewUrl
 import coil3.compose.AsyncImage
 import com.example.onthejob.ui.theme.MonoFontFamily
 
@@ -65,7 +66,7 @@ fun PhotoViewerScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
                 AsyncImage(
-                    model = imageUrls[page],
+                    model = photoPreviewUrl(imageUrls[page]),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit,
