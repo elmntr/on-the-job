@@ -1,3 +1,4 @@
+import { upstreamCategory, exceptionCategory } from './ai-diagnostics';
 import { importX509, jwtVerify, type JWTVerifyGetKey } from "jose";
 
 interface Env {
@@ -171,26 +172,27 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
           }),
         }
       );
-      // Rate limit or quota exhaustion
-      if (geminiRes.status === 429) {
-        const errBody = await geminiRes.json().catch(() => ({}));
-        const isQuotaExhausted = JSON.stringify(errBody).includes("RESOURCE_EXHAUSTED");
-        return Response.json({
-          success: false,
-          reason: isQuotaExhausted ? "quota_exhausted" : "rate_limited",
-        });
-      }
       if (!geminiRes.ok) {
-        await geminiRes.body?.cancel();
+        const errorBody: unknown = await geminiRes.json().catch(() => null);
+        const category = upstreamCategory(errorBody);
+        console.warn('ai_upstream_failure', { status: geminiRes.status, category });
+        if (geminiRes.status === 429) {
+          return Response.json({
+            success: false,
+            reason: category === 'RESOURCE_EXHAUSTED' ? 'quota_exhausted' : 'rate_limited',
+          });
+        }
         return Response.json({ success: false, reason: "failed_other" }, {status: 502});
       }
       const data = (await geminiRes.json()) as any;
       const formattedText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
       if (typeof formattedText !== "string" || !formattedText.trim() || formattedText.length > 40000) {
+        console.warn('ai_invalid_output', { category: 'missing_or_invalid_text' });
         return Response.json({ success: false, reason: "failed_other" });
       }
       return Response.json({ success: true, formattedText });
     } catch (err) {
+      console.warn('ai_request_failure', { category: exceptionCategory(err) });
       return Response.json({ success: false, reason: "failed_other" });
     }
 }

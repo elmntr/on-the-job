@@ -39,6 +39,8 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
+import { JournalToasts } from '@/components/journal-toasts';
+import { ToastProvider, useToastManager } from '@/components/ui/toast';
 import { Switch } from '@/components/ui/switch';
 import { Progress } from '@/components/ui/progress';
 import { auth, db, friendlyError, login } from '@/lib/firebase';
@@ -91,10 +93,29 @@ function statusLabel(entry: Entry) {
 }
 
 export default function JournalApp() {
+  return (
+    <ToastProvider limit={1}>
+      <JournalContent />
+      <JournalToasts />
+    </ToastProvider>
+  );
+}
+
+function JournalContent() {
   const { user, ready, entries, placements, loaded, error, cached } =
     useJournal();
-  const [notice, setNotice] = useState(''),
-    [online, setOnline] = useState(true),
+  const { add, close } = useToastManager();
+  const [notice, setBannerNotice] = useState('');
+  const setNotice = useCallback((message: string, kind: 'persistent' | 'success' | 'info' = 'persistent') => {
+    setBannerNotice(kind === 'persistent' ? message : '');
+    if (!message || kind === 'persistent') {
+      close();
+      return;
+    }
+    add({ id: 'journal-confirmation', title: message, type: kind,
+      timeout: kind === 'success' ? 3000 : 6000, priority: 'low' });
+  }, [add, close]);
+  const [online, setOnline] = useState(true),
     [signingIn, setSigningIn] = useState(false),
     [activeId, setActiveId] = useState(''),
     [editor, setEditor] = useState<Entry | 'new' | null>(null),
@@ -149,7 +170,7 @@ export default function JournalApp() {
         setPendingPhotos(0);
         setBlockedPhotos(0);
       }),
-    [],
+    [setNotice],
   );
   const retryPhotos = useCallback(async () => {
     if (!user) return;
@@ -633,7 +654,7 @@ function EntryEditor({
   uid: string;
   placement: Placement;
   onClose: () => void;
-  onNotice: (s: string) => void;
+  onNotice: (s: string, kind?: 'persistent' | 'success' | 'info') => void;
   onPhotos: () => void;
   onPhoto: (s: string) => void;
 }) {
@@ -777,6 +798,7 @@ function EntryEditor({
               result.status.startsWith('failed')
                 ? 'Log synced. AI was unavailable; your original writing is saved.'
                 : 'Log synced.',
+              result.status.startsWith('failed') ? 'info' : 'success',
             );
             onPhotos();
           }
@@ -1018,7 +1040,7 @@ function PlacementEditor({
   placement?: Placement;
   onClose: () => void;
   onSaved: (id: string) => void;
-  onNotice: (message: string) => void;
+  onNotice: (message: string, kind?: 'persistent' | 'success' | 'info') => void;
 }) {
   const [name, setName] = useState(placement?.name || ''),
     [hours, setHours] = useState(String(placement?.hoursRequired || 486)),
@@ -1058,7 +1080,7 @@ function PlacementEditor({
           }),
         );
       onSaved(ref.id);
-      onNotice('Placement saved.');
+      onNotice('Placement saved.', 'success');
       onClose();
     } catch (e) {
       setError(friendlyError(e));
