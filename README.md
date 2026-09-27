@@ -1,6 +1,6 @@
 # OnTheJob (OJT Daily Log & Hours Tracker) 🛠️📱
 
-[![Release](https://img.shields.io/badge/Release-v1.3-blue?style=for-the-badge&logo=github)](https://github.com/elmntr/on-the-job/releases/tag/ver1.3)
+[![Release](https://img.shields.io/badge/Release-v1.4-blue?style=for-the-badge&logo=github)](https://github.com/elmntr/on-the-job/releases/tag/ver1.4)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-purple?style=for-the-badge&logo=kotlin)](https://kotlinlang.org/)
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack_Compose-Material3-green?style=for-the-badge&logo=android)](https://developer.android.com/jetpack/compose)
 [![Firebase](https://img.shields.io/badge/Firebase-Auth_%26_Firestore-orange?style=for-the-badge&logo=firebase)](https://firebase.google.com/)
@@ -20,19 +20,22 @@ Use OnTheJob directly in your browser on iPhone, iPad, Android, or desktop. Sign
 
 Prefer the Android app? Download the APK from the official release page:
 
-📥 **[Download OnTheJob v1.3 APK](https://github.com/elmntr/on-the-job/releases/tag/1.3_c2)**
+📥 **[Download OnTheJob v1.4 APK](https://github.com/elmntr/on-the-job/releases/tag/ver1.4)**
 
 ---
 
 ## ✨ Features
 
+**Release status:** The web updates are live, and [Android v1.4](https://github.com/elmntr/on-the-job/releases/tag/ver1.4) is available to download.
+
 * ⏱️ **Time Tracking & Goal Progress**: Log exact hours and minutes worked each day. Set custom goal targets (e.g., 500 hours) and track progress dynamically with completion status chips and progress metrics.
 * 📅 **Calendar & Log Feed Views**: View all past entries via an interactive monthly calendar grid with daily detail panels or scroll through a unified timeline feed.
-* ✏️ **Back-logging & Custom Time**: Easily record entries for past dates or retroactively adjust logged hours.
+* ✏️ **Entry Editing & Back-logging**: Record entries for past dates and update the date, writing, or logged hours of an already-saved entry. Changing its date moves it to the corresponding day in the calendar and log feed.
+* 🗑️ **Entry Deletion**: Delete a saved entry after confirmation. Its logged hours are automatically removed from placement totals. Deletion requires an internet connection and cannot be undone.
 * 🤖 **AI-Powered Log Polish**: Converts raw bullet points or casual work notes into a polished, professional first-person narrative entry using a Cloudflare Worker backend powered by **Google Gemini 3.1 Flash Lite**.
 * 🖼️ **Multi-Photo Attachments & Viewer**: Attach multiple photos to daily logs with parallel Cloudinary background uploads (powered by Android `WorkManager`). Full-screen `PhotoViewer` with image downloading capabilities.
 * 🔒 **Google Sign-In**: Firebase Authentication, using Android Credential Manager on Android and a sign-in popup on web.
-* 🗂️ **Multiple Placements**: Separate OJT placements with individual required-hour targets.
+* 🗂️ **Multiple Placements**: Separate OJT placements with editable instance names and individual required-hour targets. Rename an existing placement without changing its entries.
 * 🌐 **Web Client**: Responsive feed, calendar, entry editor, photo viewer, offline drafts, and Home Screen installation guidance.
 * 📶 **Offline Support**: Firestore caching and persistent photo queues. Android uses background workers; web photo uploads resume while the app is open, online, and signed in. Browser storage can be cleared or evicted, so local drafts are not a backup.
 * 🎨 **Custom Design System**: Vibrant theme with custom typography (`Archivo Black`, `Big Shoulders`, `IBM Plex Mono/Sans`), stamped status badges, and styled components.
