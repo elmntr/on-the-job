@@ -1,3 +1,4 @@
+import type { User } from 'firebase/auth';
 import { openDB } from 'idb';
 import { arrayUnion, doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
@@ -49,18 +50,18 @@ export async function uploadPhotos(uid: string, isCurrentUser: () => boolean) {
       if (job.blocked) continue;
       let url = job.url;
       if (!url) {
-        let format: string;
-        try { format = await validateDecodablePhoto(job.file); }
+        try { await validateDecodablePhoto(job.file); }
         catch (error) {
           await (await storage()).put('photos', {...job, blocked: error instanceof Error ? error.message : 'Unsupported file'});
           continue;
         }
-        const body = new FormData();
-        body.append('file', job.file, `ojt-photo.${format}`);
-        body.append('upload_preset', 'onthejob_unsigned');
+        const user: User | null = auth.currentUser;
+        if (!user || user.uid !== job.uid || !isCurrentUser()) break;
+        const token = await user.getIdToken();
+        if (auth.currentUser?.uid !== job.uid || !isCurrentUser()) break;
         const response = await fetch(
-          'https://api.cloudinary.com/v1_1/dskoyv2oe/image/upload',
-          { method: 'POST', body, signal: AbortSignal.timeout(60000) },
+          'https://onthejob-ai-proxy.elmntr.workers.dev/upload',
+          { method: 'POST', body: job.file, headers: {Authorization: `Bearer ${token}`}, signal: AbortSignal.timeout(60000) },
         );
         if (!response.ok) throw new Error('Photo upload failed');
         const result = (await response.json()) as { secure_url?: string };

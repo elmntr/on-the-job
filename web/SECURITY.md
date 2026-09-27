@@ -12,6 +12,6 @@ Firebase rules supplied by the owner restrict both users/{uid}/entries and users
 
 Remaining provider/architecture limits:
 - A harmless SVG upload was rejected by the live unsigned Cloudinary preset. Its provider-side 10 MiB setting has not been independently confirmed.
-- The unsigned preset is public configuration and permits direct uploads that bypass Firebase login. Signed uploads with server-side Firebase verification are needed to restrict quota usage to authenticated users; Cloudinary admin credentials are required to implement that change.
+- The source now routes uploads through the authenticated Worker with signed Cloudinary uploads and rate limiting. Production remains vulnerable until the Worker/client updates are deployed and the old unsigned preset is disabled. See ../security/README.md for rollout steps and remaining quota limits.
 - Cloudinary image delivery URLs are public bearer links. Firestore ownership rules protect log records, not access to a photo URL already known to someone. Private/authenticated image delivery would require a storage/access redesign.
 - Offline drafts and cached logs remain on the device by design. Use a personal device; signing out is not a secure erasure of browser storage.
