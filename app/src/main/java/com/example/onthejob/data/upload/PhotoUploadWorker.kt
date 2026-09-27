@@ -27,8 +27,6 @@ class PhotoUploadWorker(
         val userId = inputData.getString(KEY_USER_ID) ?: return Result.failure()
         val entryId = inputData.getString(KEY_ENTRY_ID) ?: return Result.failure()
         val filePath = inputData.getString(KEY_FILE_PATH) ?: return Result.failure()
-        val cloudName = inputData.getString(KEY_CLOUD_NAME) ?: return Result.failure()
-        val uploadPreset = inputData.getString(KEY_UPLOAD_PRESET) ?: return Result.failure()
 
         if (runAttemptCount >= MAX_ATTEMPTS) {
             return Result.failure()
@@ -41,12 +39,14 @@ class PhotoUploadWorker(
         }
 
         val uploader = CloudinaryUploader()
-        val uploadResult = uploader.upload(file, cloudName, uploadPreset) { /* no progress UI in background */ }
+        val uploadResult = uploader.upload(file, userId) { /* no progress UI in background */ }
 
         return uploadResult.fold(
             onSuccess = { url ->
                 val appendResult = EntryRepository().appendImageUrl(userId, entryId, url)
-                if (appendResult.isSuccess) {
+                val deleted = (appendResult.exceptionOrNull() as? com.google.firebase.firestore.FirebaseFirestoreException)
+                    ?.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.NOT_FOUND
+                if (appendResult.isSuccess || deleted) {
                     file.delete()
                     Result.success()
                 } else {
@@ -63,8 +63,6 @@ class PhotoUploadWorker(
         const val KEY_USER_ID = "userId"
         const val KEY_ENTRY_ID = "entryId"
         const val KEY_FILE_PATH = "filePath"
-        const val KEY_CLOUD_NAME = "cloudName"
-        const val KEY_UPLOAD_PRESET = "uploadPreset"
         private const val MAX_ATTEMPTS = 5
     }
 }

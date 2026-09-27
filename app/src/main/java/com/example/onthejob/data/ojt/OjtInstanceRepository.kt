@@ -172,7 +172,7 @@ class OjtInstanceRepository(
                 .collection(COL_OJT_INSTANCES)
                 .document(instanceId)
                 .update(mapOf("name" to name, "hoursRequired" to hoursRequired))
-            withTimeoutOrNull(5_000L) { task.awaitTask() }
+            task.awaitTask()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

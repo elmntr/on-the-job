@@ -2,6 +2,8 @@ package com.example.onthejob.ui.entrydetail
 
 import android.app.Application
 import android.net.Uri
+import java.time.LocalDate
+import com.example.onthejob.data.entry.effectiveLocalDate
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.Constraints
@@ -9,7 +11,6 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.example.onthejob.R
 import com.example.onthejob.data.aiformat.AiFormatClient
 import com.example.onthejob.data.aiformat.AiFormatResult
 import com.example.onthejob.data.entry.Entry
@@ -34,13 +35,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val MAX_PHOTOS = 15
-private const val UPLOAD_PRESET = "onthejob_unsigned"
 private const val RATE_LIMIT_RETRY_DELAY_MS = 1500L
 
 sealed class EntryUpdateState {
     data object Idle : EntryUpdateState()
     data object Saving : EntryUpdateState()
     data object Saved : EntryUpdateState()
+    data object Deleting : EntryUpdateState()
+    data object Deleted : EntryUpdateState()
     data class Error(val message: String) : EntryUpdateState()
 }
 
@@ -73,6 +75,13 @@ class EntryDetailViewModel(
     private val _editedHours = MutableStateFlow(0.0)
     val editedHours: StateFlow<Double> = _editedHours.asStateFlow()
 
+    private val _editedDate = MutableStateFlow(LocalDate.now())
+    val editedDate: StateFlow<LocalDate> = _editedDate.asStateFlow()
+
+    fun onDateChanged(date: LocalDate) {
+        if (!date.isAfter(LocalDate.now())) _editedDate.value = date
+    }
+
     /** Existing already-uploaded photo URLs, minus any removed during this edit session. */
     private val _existingPhotoUrls = MutableStateFlow<List<String>>(emptyList())
     val existingPhotoUrls: StateFlow<List<String>> = _existingPhotoUrls.asStateFlow()
@@ -92,6 +101,7 @@ class EntryDetailViewModel(
         val current = entry.value ?: return
         _editedText.value = current.text
         _editedHours.value = current.hours
+        _editedDate.value = current.effectiveLocalDate ?: LocalDate.now()
         _existingPhotoUrls.value = current.imageUrls
         _newPhotos.value = emptyList()
         _isEditing.value = true
@@ -152,11 +162,9 @@ class EntryDetailViewModel(
 
             updateNewPhotoState(uri, PhotoUploadState.Uploading(0f))
             val uploader = CloudinaryUploader()
-            val cloudName = getApplication<Application>().getString(R.string.cloudinary_cloud_name)
             val result = uploader.upload(
                 file = photo.localFile,
-                cloudName = cloudName,
-                uploadPreset = UPLOAD_PRESET,
+                expectedUserId = userId,
                 onProgress = { progress -> updateNewPhotoState(uri, PhotoUploadState.Uploading(progress)) },
             )
             result.fold(
@@ -239,6 +247,22 @@ class EntryDetailViewModel(
      * like New Entry's own flow — appendImageUrl on this same entryId once
      * it finishes, surviving app kill/reboot.
      */
+    fun deleteEntry() {
+        val uid = userId ?: return
+        if (_updateState.value is EntryUpdateState.Deleting) return
+        if (!NetworkStatus.isOnline(getApplication())) {
+            _updateState.value = EntryUpdateState.Error("Reconnect to delete this entry.")
+            return
+        }
+        _updateState.value = EntryUpdateState.Deleting
+        viewModelScope.launch {
+            entryRepository.deleteEntry(uid, entryId).fold(
+                onSuccess = { _updateState.value = EntryUpdateState.Deleted },
+                onFailure = { _updateState.value = EntryUpdateState.Error(it.message ?: "Could not delete entry.") },
+            )
+        }
+    }
+
     fun save() {
         val current = entry.value ?: return
         val uid = userId ?: return
@@ -261,6 +285,7 @@ class EntryDetailViewModel(
                 hours = _editedHours.value,
                 imageUrls = finalImageUrls,
                 formattingStatus = newStatus,
+                entryDate = _editedDate.value.toString(),
             ).fold(
                 onSuccess = {
                     enqueuePendingPhotoUploads(uid)
@@ -273,7 +298,6 @@ class EntryDetailViewModel(
     }
 
     private fun enqueuePendingPhotoUploads(userId: String) {
-        val cloudName = getApplication<Application>().getString(R.string.cloudinary_cloud_name)
         val pending = _newPhotos.value.filter { it.state !is PhotoUploadState.Success }
 
         pending.forEach { photo ->
@@ -281,8 +305,6 @@ class EntryDetailViewModel(
                 PhotoUploadWorker.KEY_USER_ID to userId,
                 PhotoUploadWorker.KEY_ENTRY_ID to entryId,
                 PhotoUploadWorker.KEY_FILE_PATH to photo.localFile.absolutePath,
-                PhotoUploadWorker.KEY_CLOUD_NAME to cloudName,
-                PhotoUploadWorker.KEY_UPLOAD_PRESET to UPLOAD_PRESET,
             )
             val request = OneTimeWorkRequestBuilder<PhotoUploadWorker>()
                 .setInputData(data)

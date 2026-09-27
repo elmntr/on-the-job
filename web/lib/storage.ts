@@ -1,3 +1,4 @@
+import type { User } from 'firebase/auth';
 import { openDB } from 'idb';
 import { arrayUnion, doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
@@ -49,18 +50,18 @@ export async function uploadPhotos(uid: string, isCurrentUser: () => boolean) {
       if (job.blocked) continue;
       let url = job.url;
       if (!url) {
-        let format: string;
-        try { format = await validateDecodablePhoto(job.file); }
+        try { await validateDecodablePhoto(job.file); }
         catch (error) {
           await (await storage()).put('photos', {...job, blocked: error instanceof Error ? error.message : 'Unsupported file'});
           continue;
         }
-        const body = new FormData();
-        body.append('file', job.file, `ojt-photo.${format}`);
-        body.append('upload_preset', 'onthejob_unsigned');
+        const user: User | null = auth.currentUser;
+        if (!user || user.uid !== job.uid || !isCurrentUser()) break;
+        const token = await user.getIdToken();
+        if (auth.currentUser?.uid !== job.uid || !isCurrentUser()) break;
         const response = await fetch(
-          'https://api.cloudinary.com/v1_1/dskoyv2oe/image/upload',
-          { method: 'POST', body, signal: AbortSignal.timeout(60000) },
+          'https://onthejob-ai-proxy.elmntr.workers.dev/upload',
+          { method: 'POST', body: job.file, headers: {Authorization: `Bearer ${token}`}, signal: AbortSignal.timeout(60000) },
         );
         if (!response.ok) throw new Error('Photo upload failed');
         const result = (await response.json()) as { secure_url?: string };
@@ -71,9 +72,14 @@ export async function uploadPhotos(uid: string, isCurrentUser: () => boolean) {
       }
       if (!isCurrentUser() || auth.currentUser?.uid !== uid) break;
       if (!url || !safePhotoUrl(url)) throw new Error('Invalid photo URL');
-      await updateDoc(doc(db, 'users', uid, 'entries', job.entryId), {
-        imageUrls: arrayUnion(url),
-      });
+      try {
+        await updateDoc(doc(db, 'users', uid, 'entries', job.entryId), {
+          imageUrls: arrayUnion(url),
+        });
+      } catch (error) {
+        // A deleted entry must not block uploads for the remaining journal.
+        if ((error as {code?: string}).code !== 'not-found') throw error;
+      }
       await (await storage()).delete('photos', job.id);
     }
   } finally {
@@ -87,5 +93,14 @@ export async function discardBlockedPhotos(uid: string) {
   const jobs=await photoJobs(uid);
   const tx=database.transaction('photos','readwrite');
   for(const job of jobs.filter(job=>job.blocked)) await tx.store.delete(job.id);
+  await tx.done;
+}
+
+export async function discardEntryPhotos(uid: string, entryId: string) {
+  const database = await storage();
+  const tx = database.transaction('photos', 'readwrite');
+  for (const job of await tx.store.getAll()) {
+    if (job.uid === uid && job.entryId === entryId) await tx.store.delete(job.id);
+  }
   await tx.done;
 }

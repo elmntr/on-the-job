@@ -9,7 +9,6 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.example.onthejob.R
 import com.example.onthejob.data.aiformat.AiFormatClient
 import com.example.onthejob.data.aiformat.AiFormatResult
 import com.example.onthejob.data.entry.Entry
@@ -31,7 +30,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private const val UPLOAD_PRESET = "onthejob_unsigned"
 private const val MAX_PHOTOS = 15
 private const val RATE_LIMIT_RETRY_DELAY_MS = 1500L
 
@@ -117,11 +115,9 @@ class NewEntryViewModel(application: Application) : AndroidViewModel(application
             }
 
             updatePhotoState(uri, PhotoUploadState.Uploading(0f))
-            val cloudName = getApplication<Application>().getString(R.string.cloudinary_cloud_name)
             val result = uploader.upload(
                 file = photo.localFile,
-                cloudName = cloudName,
-                uploadPreset = UPLOAD_PRESET,
+                expectedUserId = FirebaseAuth.getInstance().currentUser?.uid,
                 onProgress = { progress -> updatePhotoState(uri, PhotoUploadState.Uploading(progress)) },
             )
             result.fold(
@@ -225,7 +221,6 @@ class NewEntryViewModel(application: Application) : AndroidViewModel(application
      * URL to this entry once it succeeds. No manual retry needed.
      */
     private fun enqueuePendingPhotoUploads(entryId: String, userId: String, photos: List<PickedPhoto>) {
-        val cloudName = getApplication<Application>().getString(R.string.cloudinary_cloud_name)
         val pending = photos.filter { it.state !is PhotoUploadState.Success }
 
         pending.forEach { photo ->
@@ -233,8 +228,6 @@ class NewEntryViewModel(application: Application) : AndroidViewModel(application
                 PhotoUploadWorker.KEY_USER_ID to userId,
                 PhotoUploadWorker.KEY_ENTRY_ID to entryId,
                 PhotoUploadWorker.KEY_FILE_PATH to photo.localFile.absolutePath,
-                PhotoUploadWorker.KEY_CLOUD_NAME to cloudName,
-                PhotoUploadWorker.KEY_UPLOAD_PRESET to UPLOAD_PRESET,
             )
             val request = OneTimeWorkRequestBuilder<PhotoUploadWorker>()
                 .setInputData(data)

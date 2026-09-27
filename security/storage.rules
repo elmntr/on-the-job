@@ -1,0 +1,7 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Photos use Cloudinary; this app requires no Firebase Storage access.
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

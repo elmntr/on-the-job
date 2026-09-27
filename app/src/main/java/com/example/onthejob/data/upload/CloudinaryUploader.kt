@@ -3,7 +3,8 @@ package com.example.onthejob.data.upload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
+import com.google.firebase.auth.FirebaseAuth
+import com.example.onthejob.util.awaitTask
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
@@ -29,11 +30,16 @@ class CloudinaryUploader(
      */
     suspend fun upload(
         file: File,
-        cloudName: String,
-        uploadPreset: String,
+        expectedUserId: String?,
         onProgress: (Float) -> Unit,
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
+            val user = FirebaseAuth.getInstance().currentUser
+            if (user == null || expectedUserId == null || user.uid != expectedUserId) {
+                return@withContext Result.failure(IOException("Sign in as the photo owner to upload"))
+            }
+            val token = user.getIdToken(false).awaitTask().token
+                ?: return@withContext Result.failure(IOException("Sign in again to upload"))
             if (!file.exists()) {
                 return@withContext Result.failure(IOException("Cached photo file no longer exists"))
             }
@@ -63,14 +69,13 @@ class CloudinaryUploader(
                     }
                 }
             }
-            val multipart = MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart("upload_preset", uploadPreset)
-                .addFormDataPart("file", "photo.$format", progressBody)
-                .build()
+            if (FirebaseAuth.getInstance().currentUser?.uid != expectedUserId) {
+                return@withContext Result.failure(IOException("Account changed during upload"))
+            }
             val request = Request.Builder()
-                .url("https://api.cloudinary.com/v1_1/$cloudName/image/upload")
-                .post(multipart)
+                .url("https://onthejob-ai-proxy.elmntr.workers.dev/upload")
+                .header("Authorization", "Bearer $token")
+                .post(progressBody)
                 .build()
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {

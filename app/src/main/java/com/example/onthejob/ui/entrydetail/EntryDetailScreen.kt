@@ -37,6 +37,7 @@ import coil3.compose.AsyncImage
 import com.example.onthejob.data.upload.PhotoUploadState
 import com.example.onthejob.data.upload.PickedPhoto
 import com.example.onthejob.data.entry.effectiveLocalDate
+import com.example.onthejob.ui.newentry.EntryDatePickerDialog
 import com.example.onthejob.ui.components.GhostButton
 import com.example.onthejob.ui.components.PrimaryButton
 import com.example.onthejob.ui.components.StatusChip
@@ -69,6 +70,9 @@ fun EntryDetailScreen(
     val isEditing by viewModel.isEditing.collectAsState()
     val editedText by viewModel.editedText.collectAsState()
     val editedHours by viewModel.editedHours.collectAsState()
+    val editedDate by viewModel.editedDate.collectAsState()
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val existingPhotoUrls by viewModel.existingPhotoUrls.collectAsState()
     val newPhotos by viewModel.newPhotos.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
@@ -79,9 +83,41 @@ fun EntryDetailScreen(
     ) { uris -> if (uris.isNotEmpty()) viewModel.onPhotosPicked(uris) }
 
     LaunchedEffect(updateState) {
+        if (updateState is EntryUpdateState.Deleted) onBack()
         if (updateState is EntryUpdateState.Saved) {
             viewModel.resetUpdateState()
         }
+    }
+
+    if (showDatePicker) {
+        EntryDatePickerDialog(
+            initialDate = editedDate,
+            onDismiss = { showDatePicker = false },
+            onConfirm = viewModel::onDateChanged,
+        )
+    }
+    if (showDeleteDialog) {
+        val deleting = updateState is EntryUpdateState.Deleting
+        AlertDialog(
+            onDismissRequest = { if (!deleting) showDeleteDialog = false },
+            title = { Text("Delete entry?") },
+            text = {
+                Column {
+                    Text("This removes the entry and its hours from your total. This cannot be undone.")
+                    if (updateState is EntryUpdateState.Error) {
+                        Text((updateState as EntryUpdateState.Error).message, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(enabled = !deleting, onClick = viewModel::deleteEntry) {
+                    Text(if (deleting) "Deleting…" else "Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(enabled = !deleting, onClick = { showDeleteDialog = false }) { Text("Keep entry") }
+            },
+        )
     }
 
     val current = entry
@@ -167,9 +203,17 @@ fun EntryDetailScreen(
 
                 Spacer(Modifier.height(16.dp))
                 GhostButton(text = "Edit entry", onClick = { viewModel.startEditing() })
+                TextButton(onClick = { viewModel.resetUpdateState(); showDeleteDialog = true }) {
+                    Text("Delete entry", color = MaterialTheme.colorScheme.error)
+                }
                 Spacer(Modifier.height(16.dp))
             } else {
                 // ---------- EDIT MODE ----------
+                GhostButton(
+                    text = "Date: $editedDate",
+                    onClick = { if (updateState !is EntryUpdateState.Saving) showDatePicker = true },
+                )
+                Spacer(Modifier.height(12.dp))
                 val totalPhotoCount = existingPhotoUrls.size + newPhotos.size
                 FieldLabel("Photos · $totalPhotoCount / 15")
                 Spacer(Modifier.height(8.dp))

@@ -45,7 +45,7 @@ fun LogFeedScreen(
     instances: List<com.example.onthejob.data.ojt.OjtInstance>,
     onSelectInstance: (String) -> Unit,
     onCreateInstance: (String, Double) -> Unit,
-    onUpdateInstanceTarget: (Double) -> Unit,
+    onUpdateInstanceTarget: suspend (String, Double) -> Result<Unit>,
     viewModel: LogFeedViewModel = viewModel(),
 ) {
     val entries by viewModel.entries.collectAsState()
@@ -159,10 +159,10 @@ fun LogFeedScreen(
     if (showEditGoalDialog) {
         EditGoalDialog(
             currentGoal = hoursRequired,
+            currentName = activeInstance?.name ?: "OJT 1",
             onDismiss = { showEditGoalDialog = false },
-            onConfirm = { newGoal ->
-                onUpdateInstanceTarget(newGoal)
-                showEditGoalDialog = false
+            onConfirm = { name, newGoal ->
+                onUpdateInstanceTarget(name, newGoal).onSuccess { showEditGoalDialog = false }
             },
         )
     }
