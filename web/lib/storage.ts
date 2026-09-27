@@ -72,9 +72,14 @@ export async function uploadPhotos(uid: string, isCurrentUser: () => boolean) {
       }
       if (!isCurrentUser() || auth.currentUser?.uid !== uid) break;
       if (!url || !safePhotoUrl(url)) throw new Error('Invalid photo URL');
-      await updateDoc(doc(db, 'users', uid, 'entries', job.entryId), {
-        imageUrls: arrayUnion(url),
-      });
+      try {
+        await updateDoc(doc(db, 'users', uid, 'entries', job.entryId), {
+          imageUrls: arrayUnion(url),
+        });
+      } catch (error) {
+        // A deleted entry must not block uploads for the remaining journal.
+        if ((error as {code?: string}).code !== 'not-found') throw error;
+      }
       await (await storage()).delete('photos', job.id);
     }
   } finally {
@@ -88,5 +93,14 @@ export async function discardBlockedPhotos(uid: string) {
   const jobs=await photoJobs(uid);
   const tx=database.transaction('photos','readwrite');
   for(const job of jobs.filter(job=>job.blocked)) await tx.store.delete(job.id);
+  await tx.done;
+}
+
+export async function discardEntryPhotos(uid: string, entryId: string) {
+  const database = await storage();
+  const tx = database.transaction('photos', 'readwrite');
+  for (const job of await tx.store.getAll()) {
+    if (job.uid === uid && job.entryId === entryId) await tx.store.delete(job.id);
+  }
   await tx.done;
 }

@@ -154,10 +154,8 @@ class OjtInstanceViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     /** Updates an instance's name or target hours. */
-    fun updateInstanceTarget(instanceId: String, name: String, hoursRequired: Double) {
-        val uid = userId ?: return
-        viewModelScope.launch {
-            repo.updateInstance(uid, instanceId, name, hoursRequired)
-        }
+    suspend fun updateInstanceTarget(instanceId: String, name: String, hoursRequired: Double): Result<Unit> {
+        val uid = userId ?: return Result.failure(IllegalStateException("Sign in to edit your OJT instance."))
+        return repo.updateInstance(uid, instanceId, name, hoursRequired)
     }
 }

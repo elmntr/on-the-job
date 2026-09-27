@@ -44,7 +44,9 @@ class PhotoUploadWorker(
         return uploadResult.fold(
             onSuccess = { url ->
                 val appendResult = EntryRepository().appendImageUrl(userId, entryId, url)
-                if (appendResult.isSuccess) {
+                val deleted = (appendResult.exceptionOrNull() as? com.google.firebase.firestore.FirebaseFirestoreException)
+                    ?.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.NOT_FOUND
+                if (appendResult.isSuccess || deleted) {
                     file.delete()
                     Result.success()
                 } else {

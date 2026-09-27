@@ -2,6 +2,8 @@ package com.example.onthejob.ui.entrydetail
 
 import android.app.Application
 import android.net.Uri
+import java.time.LocalDate
+import com.example.onthejob.data.entry.effectiveLocalDate
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.Constraints
@@ -39,6 +41,8 @@ sealed class EntryUpdateState {
     data object Idle : EntryUpdateState()
     data object Saving : EntryUpdateState()
     data object Saved : EntryUpdateState()
+    data object Deleting : EntryUpdateState()
+    data object Deleted : EntryUpdateState()
     data class Error(val message: String) : EntryUpdateState()
 }
 
@@ -71,6 +75,13 @@ class EntryDetailViewModel(
     private val _editedHours = MutableStateFlow(0.0)
     val editedHours: StateFlow<Double> = _editedHours.asStateFlow()
 
+    private val _editedDate = MutableStateFlow(LocalDate.now())
+    val editedDate: StateFlow<LocalDate> = _editedDate.asStateFlow()
+
+    fun onDateChanged(date: LocalDate) {
+        if (!date.isAfter(LocalDate.now())) _editedDate.value = date
+    }
+
     /** Existing already-uploaded photo URLs, minus any removed during this edit session. */
     private val _existingPhotoUrls = MutableStateFlow<List<String>>(emptyList())
     val existingPhotoUrls: StateFlow<List<String>> = _existingPhotoUrls.asStateFlow()
@@ -90,6 +101,7 @@ class EntryDetailViewModel(
         val current = entry.value ?: return
         _editedText.value = current.text
         _editedHours.value = current.hours
+        _editedDate.value = current.effectiveLocalDate ?: LocalDate.now()
         _existingPhotoUrls.value = current.imageUrls
         _newPhotos.value = emptyList()
         _isEditing.value = true
@@ -235,6 +247,22 @@ class EntryDetailViewModel(
      * like New Entry's own flow — appendImageUrl on this same entryId once
      * it finishes, surviving app kill/reboot.
      */
+    fun deleteEntry() {
+        val uid = userId ?: return
+        if (_updateState.value is EntryUpdateState.Deleting) return
+        if (!NetworkStatus.isOnline(getApplication())) {
+            _updateState.value = EntryUpdateState.Error("Reconnect to delete this entry.")
+            return
+        }
+        _updateState.value = EntryUpdateState.Deleting
+        viewModelScope.launch {
+            entryRepository.deleteEntry(uid, entryId).fold(
+                onSuccess = { _updateState.value = EntryUpdateState.Deleted },
+                onFailure = { _updateState.value = EntryUpdateState.Error(it.message ?: "Could not delete entry.") },
+            )
+        }
+    }
+
     fun save() {
         val current = entry.value ?: return
         val uid = userId ?: return
@@ -257,6 +285,7 @@ class EntryDetailViewModel(
                 hours = _editedHours.value,
                 imageUrls = finalImageUrls,
                 formattingStatus = newStatus,
+                entryDate = _editedDate.value.toString(),
             ).fold(
                 onSuccess = {
                     enqueuePendingPhotoUploads(uid)

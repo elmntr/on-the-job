@@ -10,6 +10,9 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalContext
+import com.example.onthejob.util.NetworkStatus
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -21,9 +24,15 @@ import com.example.onthejob.ui.theme.*
 @Composable
 fun EditGoalDialog(
     currentGoal: Double,
+    currentName: String,
     onDismiss: () -> Unit,
-    onConfirm: (Double) -> Unit,
+    onConfirm: suspend (String, Double) -> Result<Unit>,
 ) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var saving by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var name by remember(currentName) { mutableStateOf(currentName) }
     var hoursText by remember(currentGoal) {
         mutableStateOf(
             if (currentGoal == currentGoal.toLong().toDouble()) {
@@ -35,15 +44,15 @@ fun EditGoalDialog(
     }
 
     val parsed = hoursText.toDoubleOrNull()
-    val isValid = parsed != null && parsed > 0
+    val isValid = parsed != null && parsed.isFinite() && parsed > 0 && parsed <= 10000 && name.trim().isNotEmpty()
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!saving) onDismiss() },
         containerColor = Paper,
         shape = RoundedCornerShape(16.dp),
         title = {
             Text(
-                text = "EDIT GOAL HOURS",
+                text = "EDIT OJT INSTANCE",
                 fontFamily = CondFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
@@ -53,6 +62,15 @@ fun EditGoalDialog(
         },
         text = {
             Column {
+                OutlinedTextField(
+                    enabled = !saving,
+                    value = name,
+                    onValueChange = { if (it.length <= 100) name = it },
+                    label = { Text("OJT instance name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
                 Text(
                     text = "REQUIRED HOURS",
                     fontFamily = CondFontFamily,
@@ -63,6 +81,7 @@ fun EditGoalDialog(
                 )
                 Spacer(Modifier.height(7.dp))
                 OutlinedTextField(
+                    enabled = !saving,
                     value = hoursText,
                     onValueChange = { hoursText = it },
                     modifier = Modifier.fillMaxWidth(),
@@ -80,10 +99,11 @@ fun EditGoalDialog(
                     ),
                     isError = hoursText.isNotEmpty() && !isValid,
                 )
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 if (hoursText.isNotEmpty() && !isValid) {
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Please enter a positive number",
+                        text = "Enter a name and required hours between 1 and 10,000",
                         fontFamily = BodyFontFamily,
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.error,
@@ -95,13 +115,24 @@ fun EditGoalDialog(
             TextButton(
                 onClick = {
                     if (parsed != null && isValid) {
-                        onConfirm(parsed)
+                        if (!NetworkStatus.isOnline(context)) {
+                            error = "Reconnect to save your OJT instance."
+                        } else {
+                            saving = true
+                            error = null
+                            scope.launch {
+                                onConfirm(name.trim(), parsed).onFailure {
+                                    error = it.message ?: "Could not save your OJT instance."
+                                }
+                                saving = false
+                            }
+                        }
                     }
                 },
-                enabled = isValid,
+                enabled = isValid && !saving,
             ) {
                 Text(
-                    text = "SAVE",
+                    text = if (saving) "SAVING…" else "SAVE",
                     fontFamily = CondFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
@@ -110,7 +141,7 @@ fun EditGoalDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(enabled = !saving, onClick = onDismiss) {
                 Text(
                     text = "CANCEL",
                     fontFamily = CondFontFamily,
