@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    // Explicit collection scopes preserve existing clients and legacy records.
+    match /users/{uid}/entries/{entryId} {
+      allow read, write: if owner(uid);
+    }
+    match /users/{uid}/ojtInstances/{instanceId} {
+      allow read, write: if owner(uid);
+    }
+    // All other paths are denied by default.
+  }
+}

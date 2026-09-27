@@ -9,7 +9,6 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.example.onthejob.R
 import com.example.onthejob.data.aiformat.AiFormatClient
 import com.example.onthejob.data.aiformat.AiFormatResult
 import com.example.onthejob.data.entry.Entry
@@ -34,7 +33,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val MAX_PHOTOS = 15
-private const val UPLOAD_PRESET = "onthejob_unsigned"
 private const val RATE_LIMIT_RETRY_DELAY_MS = 1500L
 
 sealed class EntryUpdateState {
@@ -152,11 +150,9 @@ class EntryDetailViewModel(
 
             updateNewPhotoState(uri, PhotoUploadState.Uploading(0f))
             val uploader = CloudinaryUploader()
-            val cloudName = getApplication<Application>().getString(R.string.cloudinary_cloud_name)
             val result = uploader.upload(
                 file = photo.localFile,
-                cloudName = cloudName,
-                uploadPreset = UPLOAD_PRESET,
+                expectedUserId = userId,
                 onProgress = { progress -> updateNewPhotoState(uri, PhotoUploadState.Uploading(progress)) },
             )
             result.fold(
@@ -273,7 +269,6 @@ class EntryDetailViewModel(
     }
 
     private fun enqueuePendingPhotoUploads(userId: String) {
-        val cloudName = getApplication<Application>().getString(R.string.cloudinary_cloud_name)
         val pending = _newPhotos.value.filter { it.state !is PhotoUploadState.Success }
 
         pending.forEach { photo ->
@@ -281,8 +276,6 @@ class EntryDetailViewModel(
                 PhotoUploadWorker.KEY_USER_ID to userId,
                 PhotoUploadWorker.KEY_ENTRY_ID to entryId,
                 PhotoUploadWorker.KEY_FILE_PATH to photo.localFile.absolutePath,
-                PhotoUploadWorker.KEY_CLOUD_NAME to cloudName,
-                PhotoUploadWorker.KEY_UPLOAD_PRESET to UPLOAD_PRESET,
             )
             val request = OneTimeWorkRequestBuilder<PhotoUploadWorker>()
                 .setInputData(data)

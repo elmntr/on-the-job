@@ -1,7 +1,9 @@
 import { upstreamCategory, exceptionCategory } from './ai-diagnostics';
 import { importX509, jwtVerify, type JWTVerifyGetKey } from "jose";
 
-interface Env {
+import {handleUpload, type UploadEnv} from './upload';
+
+interface Env extends UploadEnv {
   GEMINI_API_KEY: string;
   AI_RATE_LIMITER: {limit(options: {key: string}): Promise<{success: boolean}>};
 }
@@ -142,6 +144,8 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     if (!auth) {
       return Response.json({ success: false, reason: "unauthorized" }, { status: 401 });
     }
+
+    if (new URL(request.url).pathname === '/upload') return handleUpload(request, auth.uid, env);
 
     let rawText: string;
     try {
