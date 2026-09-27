@@ -392,7 +392,7 @@ private fun PhotoTile(photo: PickedPhoto, onRetry: () -> Unit, onRemove: () -> U
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EntryDatePickerDialog(
+internal fun EntryDatePickerDialog(
     initialDate: LocalDate,
     onDismiss: () -> Unit,
     onConfirm: (LocalDate) -> Unit,

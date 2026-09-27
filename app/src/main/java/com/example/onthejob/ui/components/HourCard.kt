@@ -60,7 +60,7 @@ fun HoursCard(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Edit,
-                        contentDescription = "Edit goal hours",
+                        contentDescription = "Edit OJT instance name and goal hours",
                         tint = Paper.copy(alpha = 0.6f),
                         modifier = Modifier.size(13.dp),
                     )

@@ -148,6 +148,7 @@ class EntryRepository(
         hours: Double,
         imageUrls: List<String>,
         formattingStatus: String,
+        entryDate: String,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val task = firestore.collection("users")
@@ -160,6 +161,7 @@ class EntryRepository(
                         "hours" to hours,
                         "imageUrls" to imageUrls,
                         "formattingStatus" to formattingStatus,
+                        "entryDate" to entryDate,
                     ),
                 )
             withTimeoutOrNull(5_000L) { task.awaitTask() }
@@ -168,4 +170,15 @@ class EntryRepository(
             Result.failure(e)
         }
     }
+    suspend fun deleteEntry(userId: String, entryId: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                firestore.collection("users").document(userId)
+                    .collection("entries").document(entryId).delete().awaitTask()
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+
 }

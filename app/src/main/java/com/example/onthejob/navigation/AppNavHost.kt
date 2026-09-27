@@ -116,10 +116,10 @@ fun AppNavHost(
                         instances = instances,
                         onSelectInstance = { ojtViewModel.setActiveInstance(it) },
                         onCreateInstance = { name, target -> ojtViewModel.createInstance(name, target) },
-                        onUpdateInstanceTarget = { newTarget ->
+                        onUpdateInstanceTarget = { name, newTarget ->
                             currentInstance?.id?.let { id ->
-                                ojtViewModel.updateInstanceTarget(id, currentInstance.name, newTarget)
-                            }
+                                ojtViewModel.updateInstanceTarget(id, name, newTarget)
+                            } ?: Result.failure(IllegalStateException("Select an OJT instance first."))
                         },
                         viewModel = viewModel(
                             key = "LogFeedViewModel_$activeInstanceId",

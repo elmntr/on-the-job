@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import {
   collection,
+  deleteDoc,
   doc,
   serverTimestamp,
   setDoc,
@@ -62,6 +63,7 @@ import {
 import {
   clearDraft,
   discardBlockedPhotos,
+  discardEntryPhotos,
   photoJobs,
   queuePhotos,
   readDraft,
@@ -295,7 +297,8 @@ function JournalContent() {
             {active && (
               <button
                 className="icon-button"
-                aria-label="Edit placement and hours goal"
+                aria-label="Edit OJT instance name and hours goal"
+                title="Edit OJT instance name and hours goal"
                 onClick={() => setPlacementDialog('edit')}
               >
                 <Settings2 size={20} />
@@ -675,7 +678,8 @@ function EntryEditor({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [message, setMessage] = useState(''),
-    [checkingPhotos, setCheckingPhotos] = useState(false);
+    [checkingPhotos, setCheckingPhotos] = useState(false),
+    [confirmDelete, setConfirmDelete] = useState(false);
   const key = `${uid}:${placement.id}:${entry?.id || 'new'}`,
     busyRef = useRef(false),
     storageChain = useRef(Promise.resolve());
@@ -767,6 +771,7 @@ function EntryEditor({
         text: result.text,
         hours: (Number(draft.hours) * 60 + Number(draft.minutes)) / 60,
         formattingStatus: result.status,
+        entryDate: draft.date,
       };
       // Append/remove individual URLs so a concurrent Android upload is never replaced.
       const { arrayRemove } = await import('firebase/firestore');
@@ -826,6 +831,35 @@ function EntryEditor({
       setBusy(false);
     }
   }
+  async function removeEntry() {
+    if (!entry || busyRef.current || auth.currentUser?.uid !== uid) return;
+    if (!navigator.onLine) {
+      setError('Reconnect to delete this entry.');
+      return;
+    }
+    busyRef.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      await storageChain.current;
+      await deleteDoc(doc(db, 'users', uid, 'entries', entry.id));
+    } catch (error) {
+      setError(friendlyError(error));
+      busyRef.current = false;
+      setBusy(false);
+      return;
+    }
+    const cleanup = await Promise.allSettled([
+      clearDraft(key), discardEntryPhotos(uid, entry.id),
+    ]);
+    onNotice(
+      cleanup.some((result) => result.status === 'rejected')
+        ? 'Entry deleted. Some local draft or photo data could not be cleared.'
+        : 'Entry deleted.',
+      cleanup.some((result) => result.status === 'rejected') ? 'info' : 'success',
+    );
+    onClose();
+  }
   return (
     <Dialog
       open
@@ -849,8 +883,7 @@ function EntryEditor({
           }}
         >
           <fieldset disabled={busy || !hydrated || checkingPhotos}>
-            {!entry && (
-              <label>
+            <label>
                 Date
                 <input
                   type="date"
@@ -860,7 +893,6 @@ function EntryEditor({
                   required
                 />
               </label>
-            )}
             <div className="duration-fields">
               <label>
                 Hours
@@ -1014,6 +1046,17 @@ function EntryEditor({
               </p>
             )}
             {message && <output>{message}</output>}
+            {entry && (
+              confirmDelete ? (
+                <fieldset aria-label="Confirm entry deletion">
+                  <p>Delete this entry and remove its hours from your total? This cannot be undone.</p>
+                  <button type="button" className="secondary" onClick={() => setConfirmDelete(false)}>Keep entry</button>
+                  <button type="button" className="secondary" onClick={() => void removeEntry()}>Delete permanently</button>
+                </fieldset>
+              ) : (
+                <button type="button" className="secondary" onClick={() => setConfirmDelete(true)}>Delete entry</button>
+              )
+            )}
             <div className="form-actions">
               <button type="button" className="secondary" onClick={onClose}>
                 Close
